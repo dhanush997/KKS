@@ -54,16 +54,50 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized. Please sign in first." }, { status: 401 });
-    }
-
     const {
       cartItems, // Array of { productId, name, size, quantity, price, image }
       paymentMethod, // "COD" or "RAZORPAY"
-      shippingAddress, // { name, phone, streetAddress, city, state, postalCode, country }
+      shippingAddress, // { name, email, phone, streetAddress, city, state, postalCode, country }
       addressId, // Optional, if using pre-saved address
     } = await req.json();
+
+    let userId: string;
+    let customerName: string;
+    let customerEmail: string;
+
+    if (session) {
+      userId = session.user.id;
+      customerName = session.user.name || "Customer";
+      customerEmail = session.user.email || "";
+    } else {
+      // Guest Checkout Flow
+      if (!shippingAddress || !shippingAddress.email) {
+        return NextResponse.json({ error: "Please sign in or provide a guest email to complete checkout." }, { status: 401 });
+      }
+
+      // Check if user already exists
+      let guestUser = await db.user.findUnique({
+        where: { email: shippingAddress.email.toLowerCase() },
+      });
+
+      if (!guestUser) {
+        // Create a GUEST user profile
+        const bcrypt = await import("bcryptjs");
+        const randomPassword = await bcrypt.hash(Math.random().toString(36).substring(2) + Date.now().toString(), 10);
+        guestUser = await db.user.create({
+          data: {
+            name: shippingAddress.name || "Guest Customer",
+            email: shippingAddress.email.toLowerCase(),
+            password: randomPassword,
+            role: "GUEST",
+          },
+        });
+      }
+
+      userId = guestUser.id;
+      customerName = guestUser.name;
+      customerEmail = guestUser.email;
+    }
 
     if (!cartItems || cartItems.length === 0 || !paymentMethod) {
       return NextResponse.json({ error: "Cart is empty or payment method not selected." }, { status: 400 });
@@ -85,8 +119,9 @@ export async function POST(req: NextRequest) {
     } else {
       selectedAddress = await db.address.create({
         data: {
-          userId: session.user.id,
+          userId,
           name: shippingAddress.name,
+          email: shippingAddress.email || customerEmail,
           phone: shippingAddress.phone,
           streetAddress: shippingAddress.streetAddress,
           city: shippingAddress.city,
@@ -94,7 +129,7 @@ export async function POST(req: NextRequest) {
           postalCode: shippingAddress.postalCode,
           country: shippingAddress.country || "India",
           isDefault: false,
-        },
+        } as any,
       });
     }
 
@@ -144,7 +179,7 @@ export async function POST(req: NextRequest) {
         const createdOrder = await tx.order.create({
           data: {
             orderNumber,
-            userId: session.user.id,
+            userId,
             addressId: selectedAddress.id,
             totalAmount,
             status: "PROCESSING", // COD starts processing directly
@@ -194,8 +229,8 @@ export async function POST(req: NextRequest) {
       try {
         await sendOrderEmails({
           orderNumber: order.orderNumber,
-          customerName: session.user.name || "Customer",
-          customerEmail: session.user.email || "",
+          customerName: customerName,
+          customerEmail: customerEmail,
           totalAmount,
           paymentMethod,
           shippingAddress: selectedAddress,
@@ -217,7 +252,7 @@ export async function POST(req: NextRequest) {
         const createdOrder = await tx.order.create({
           data: {
             orderNumber,
-            userId: session.user.id,
+            userId,
             addressId: selectedAddress.id,
             totalAmount,
             status: "PENDING", // Stays pending until payment is verified

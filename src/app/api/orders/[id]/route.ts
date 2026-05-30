@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const { id: orderId } = await params;
-    const { status } = await req.json(); // e.g. "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
+    const { status, trackingNo, trackingUrl } = await req.json(); // e.g. "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", tracking updates
 
     const isAdmin = session.user.role === "ADMIN";
 
@@ -90,11 +90,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const isCancelling = status === "CANCELLED" && currentOrder.status !== "CANCELLED";
 
     const updatedOrder = await db.$transaction(async (tx) => {
-      // Update order status
+      // Update order status & tracking info
       const ord = await tx.order.update({
         where: { id: orderId },
         data: {
-          status,
+          ...(status ? { status } : {}),
+          ...(trackingNo !== undefined ? { trackingNo } : {}),
+          ...(trackingUrl !== undefined ? { trackingUrl } : {}),
           // If cancelled, optionally set payment status to FAILED or REFUNDED depending on method
           ...(status === "CANCELLED" && currentOrder.paymentMethod === "COD" ? { paymentStatus: "FAILED" } : {}),
         },

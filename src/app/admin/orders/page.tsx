@@ -25,6 +25,8 @@ interface Order {
   paymentStatus: string;
   totalAmount: number;
   estimatedDeliveryDate: string;
+  trackingNo?: string | null;
+  trackingUrl?: string | null;
   user: {
     name: string;
     email: string;
@@ -52,6 +54,11 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+
+  // Tracking State
+  const [trackingNo, setTrackingNo] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
+  const [isTrackingUpdating, setIsTrackingUpdating] = useState(false);
 
   const loadOrders = (search: string = "") => {
     setIsLoading(true);
@@ -118,7 +125,53 @@ export default function AdminOrdersPage() {
 
   const handleOpenDetails = (ord: Order) => {
     setSelectedOrder(ord);
+    setTrackingNo(ord.trackingNo || "");
+    setTrackingUrl(ord.trackingUrl || "");
     setIsDetailsOpen(true);
+  };
+
+  const handleUpdateTracking = async () => {
+    if (!selectedOrder) return;
+    setIsTrackingUpdating(true);
+    try {
+      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingNo, trackingUrl }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update tracking details.");
+      }
+
+      toast({
+        title: "Tracking Updated",
+        description: "Order tracking information has been saved successfully.",
+        variant: "success",
+      });
+
+      // Update local tables
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrder.id ? { ...o, trackingNo, trackingUrl } : o
+        )
+      );
+
+      setSelectedOrder((prev) =>
+        prev ? { ...prev, trackingNo, trackingUrl } : null
+      );
+    } catch (err: any) {
+      console.error("Error updating tracking details:", err);
+      toast({
+        title: "Update Failed",
+        description: err.message || "Failed to update tracking details.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTrackingUpdating(false);
+    }
   };
 
   const statusColors: Record<string, string> = {
@@ -310,6 +363,42 @@ export default function AdminOrdersPage() {
                     {selectedOrder.paymentStatus}
                   </span>
                 </p>
+              </div>
+            </div>
+
+            {/* Tracking Information */}
+            <div className="space-y-3 border-t border-border pt-4 text-xs">
+              <h4 className="font-bold uppercase tracking-wider text-muted-foreground">Parcel Tracking (Fulfillment)</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Tracking Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. TRK123456789"
+                    value={trackingNo}
+                    onChange={(e) => setTrackingNo(e.target.value)}
+                    className="h-9 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Tracking Link / URL</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. https://track.provider.com/..."
+                    value={trackingUrl}
+                    onChange={(e) => setTrackingUrl(e.target.value)}
+                    className="h-9 w-full rounded border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring font-semibold"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <Button
+                  onClick={handleUpdateTracking}
+                  isLoading={isTrackingUpdating}
+                  className="uppercase tracking-wider font-bold text-[10px] h-8 px-4"
+                >
+                  Save Tracking Info
+                </Button>
               </div>
             </div>
 

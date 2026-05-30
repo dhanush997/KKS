@@ -84,6 +84,7 @@ model Address {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
+  email         String?
   phone         String
   streetAddress String
   city          String
@@ -131,6 +132,8 @@ model Order {
   paymentMethod          String      // "COD" or "RAZORPAY"
   paymentStatus          String      @default("PENDING") // "PENDING", "COMPLETED", "FAILED", "REFUNDED"
   estimatedDeliveryDate  DateTime
+  trackingNo             String?
+  trackingUrl            String?
   orderItems             OrderItem[]
   payments               Payment[]
   createdAt              DateTime    @default(now())

@@ -151,10 +151,25 @@ function LoginForm() {
           </Button>
         </form>
 
+        {/* Guest checkout option if redirected from checkout */}
+        {callbackUrl.includes("/checkout") && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <Link href="/checkout?guest=true" className="block w-full">
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full h-11 uppercase font-bold tracking-wider"
+              >
+                Continue as Guest
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Register Redirect */}
         <div className="mt-8 pt-6 border-t border-border text-center text-xs font-semibold text-muted-foreground">
           New to KK Brand?{" "}
-          <Link href="/auth/register" className="text-gold-600 hover:underline">
+          <Link href={`/auth/register?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="text-gold-600 hover:underline">
             Create an account
           </Link>
         </div>

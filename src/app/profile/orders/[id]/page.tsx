@@ -27,6 +27,8 @@ interface Order {
   paymentStatus: string;
   totalAmount: number;
   estimatedDeliveryDate: string;
+  trackingNo?: string | null;
+  trackingUrl?: string | null;
   orderItems: OrderItem[];
   address: {
     name: string;
@@ -190,6 +192,32 @@ export default function OrderDetailsPage({ params }: PageProps) {
               <p className="text-xs font-bold uppercase tracking-wider text-gold-800">Estimated Delivery Date</p>
               <h3 className="text-lg font-black text-gold-700 mt-1">{formatDate(order.estimatedDeliveryDate)}</h3>
               <p className="text-[10px] text-muted-foreground mt-1">Order Date + 7 Days Delivery Guarantee.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Highlight Banner: Tracking Info */}
+        {order.trackingNo && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50/30 p-5 flex items-start gap-4 shadow-sm">
+            <ShoppingBag className="h-6 w-6 text-indigo-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-800">Shipment Tracking</p>
+              <h3 className="text-sm font-bold text-foreground mt-1.5">
+                Tracking Number:{" "}
+                {order.trackingUrl ? (
+                  <a
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:underline font-extrabold"
+                  >
+                    {order.trackingNo}
+                  </a>
+                ) : (
+                  <span className="font-extrabold text-foreground">{order.trackingNo}</span>
+                )}
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-1">Click your tracking number to track your package delivery progress.</p>
             </div>
           </div>
         )}

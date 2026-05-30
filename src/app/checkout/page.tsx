@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/components/ui/toast";
@@ -27,15 +27,18 @@ function loadScript(src: string): Promise<boolean> {
   });
 }
 
-export default function CheckoutPage() {
+function CheckoutForm() {
   const { data: session, status } = useSession();
   const { cart, cartTotal, clearCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isGuest = searchParams.get("guest") === "true";
 
   // Form State
   const [address, setAddress] = useState({
     name: "",
+    email: "",
     phone: "",
     streetAddress: "",
     city: "",
@@ -49,9 +52,9 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
 
-  // Redirect if not logged in
+  // Redirect if not logged in and not continuing as guest
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" && !isGuest) {
       toast({
         title: "Authentication Required",
         description: "Please sign in to complete your checkout.",
@@ -59,13 +62,17 @@ export default function CheckoutPage() {
       });
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
     }
-  }, [status, router, toast]);
+  }, [status, router, toast, isGuest]);
 
   // Load saved addresses on mount
   useEffect(() => {
     if (status === "authenticated") {
-      // Pre-fill user name
-      setAddress((prev) => ({ ...prev, name: session?.user?.name || "" }));
+      // Pre-fill user name and email
+      setAddress((prev) => ({
+        ...prev,
+        name: session?.user?.name || "",
+        email: session?.user?.email || "",
+      }));
 
       fetch("/api/orders") // Re-use order endpoints or address list if exists
         .then((res) => res.json())
@@ -97,6 +104,7 @@ export default function CheckoutPage() {
       if (selected) {
         setAddress({
           name: selected.name,
+          email: selected.email || session?.user?.email || "",
           phone: selected.phone,
           streetAddress: selected.streetAddress,
           city: selected.city,
@@ -108,6 +116,7 @@ export default function CheckoutPage() {
     } else if (selectedAddressId === "new") {
       setAddress({
         name: session?.user?.name || "",
+        email: session?.user?.email || "",
         phone: "",
         streetAddress: "",
         city: "",
@@ -139,10 +148,20 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!address.name || !address.phone || !address.streetAddress || !address.city || !address.state || !address.postalCode) {
+    if (!address.name || !address.email || !address.phone || !address.streetAddress || !address.city || !address.state || !address.postalCode) {
       toast({
         title: "Missing Details",
-        description: "Please fill out all shipping details.",
+        description: "Please fill out all shipping details, including email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(address.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address for delivery updates.",
         variant: "destructive",
       });
       return;
@@ -323,12 +342,22 @@ export default function CheckoutPage() {
               Shipping Destination
             </h2>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Input
                 label="Full Name"
                 name="name"
                 required
                 value={address.name}
+                onChange={handleInputChange}
+                disabled={selectedAddressId !== "new" && selectedAddressId !== ""}
+              />
+              <Input
+                label="Email Address"
+                name="email"
+                required
+                type="email"
+                placeholder="email@example.com"
+                value={address.email}
                 onChange={handleInputChange}
                 disabled={selectedAddressId !== "new" && selectedAddressId !== ""}
               />
@@ -503,5 +532,17 @@ export default function CheckoutPage() {
 
       </form>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-grow flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <CheckoutForm />
+    </Suspense>
   );
 }

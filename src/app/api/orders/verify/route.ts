@@ -7,10 +7,7 @@ import { sendOrderEmails } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized access." }, { status: 401 });
-    }
+    // Session check is optional; the cryptographic signature verification is the primary security guarantee.
 
     const {
       razorpay_order_id,
@@ -45,6 +42,9 @@ export async function POST(req: NextRequest) {
       include: {
         orderItems: true,
         address: true,
+        user: {
+          select: { name: true, email: true },
+        },
       },
     });
 
@@ -114,8 +114,8 @@ export async function POST(req: NextRequest) {
 
       await sendOrderEmails({
         orderNumber: order.orderNumber,
-        customerName: session.user.name || "Customer",
-        customerEmail: session.user.email || "",
+        customerName: order.user?.name || "Customer",
+        customerEmail: order.user?.email || "",
         totalAmount: order.totalAmount,
         paymentMethod: "RAZORPAY",
         shippingAddress: order.address,

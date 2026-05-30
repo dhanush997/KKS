@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Navbar } from "@/components/Navbar";
+import { PromoBanner } from "@/components/PromoBanner";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={cn(inter.className, "bg-white dark:bg-neutral-950 min-h-screen flex flex-col")}>
         <Providers>
+          <PromoBanner />
           <Navbar />
           <main className="flex-grow flex flex-col">
             {children}

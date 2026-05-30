@@ -15,6 +15,9 @@ interface OrderItem {
   size: string;
   quantity: number;
   price: number;
+  discount?: number;
+  shippingFee?: number;
+  couponCode?: string | null;
   image: string;
 }
 
@@ -26,6 +29,8 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   totalAmount: number;
+  shippingTotal?: number;
+  discountTotal?: number;
   estimatedDeliveryDate: string;
   trackingNo?: string | null;
   trackingUrl?: string | null;
@@ -230,21 +235,33 @@ export default function OrderDetailsPage({ params }: PageProps) {
           
           <div className="divide-y divide-border border-t border-b border-border">
             {order.orderItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 py-4">
-                <div className="relative aspect-[3/4] w-16 overflow-hidden rounded border border-border bg-neutral-50 shrink-0">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="flex-grow flex justify-between items-center gap-4">
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-foreground line-clamp-1">{item.name}</h4>
-                    <p className="text-xs text-muted-foreground font-semibold">Size: {item.size} | Qty: {item.quantity}</p>
+              <div key={item.id} className="py-4 space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="relative aspect-[3/4] w-16 overflow-hidden rounded border border-border bg-neutral-50 shrink-0">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
-                  <span className="text-sm font-extrabold text-foreground">{formatPrice(item.price * item.quantity)}</span>
+                  <div className="flex-grow flex justify-between items-center gap-4">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-foreground line-clamp-1">{item.name}</h4>
+                      <p className="text-xs text-muted-foreground font-semibold">Size: {item.size} | Qty: {item.quantity}</p>
+                    </div>
+                    <span className="text-sm font-extrabold text-foreground">{formatPrice(item.price * item.quantity)}</span>
+                  </div>
                 </div>
+                {(item.discount || 0) > 0 && (
+                  <p className="text-[10px] text-rose-600 font-bold text-right">
+                    Discount ({item.couponCode || "Coupon"}): -{formatPrice(item.discount || 0)}
+                  </p>
+                )}
+                {(item.shippingFee || 0) > 0 && (
+                  <p className="text-[10px] text-neutral-500 font-bold text-right">
+                    Shipping: +{formatPrice(item.shippingFee || 0)}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -253,11 +270,21 @@ export default function OrderDetailsPage({ params }: PageProps) {
             <div className="w-64 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="text-foreground">{formatPrice(order.totalAmount)}</span>
+                <span className="text-foreground">
+                  {formatPrice(order.totalAmount - (order.shippingTotal || 0) + (order.discountTotal || 0))}
+                </span>
               </div>
+              {(order.discountTotal || 0) > 0 && (
+                <div className="flex justify-between text-rose-600 font-bold">
+                  <span>Discounts</span>
+                  <span>-{formatPrice(order.discountTotal || 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-b border-border pb-3">
                 <span className="text-muted-foreground">Shipping</span>
-                <span className="text-emerald-600 uppercase font-bold">Free</span>
+                <span className={(order.shippingTotal || 0) > 0 ? "text-foreground font-bold" : "text-emerald-600 uppercase font-bold"}>
+                  {(order.shippingTotal || 0) > 0 ? formatPrice(order.shippingTotal || 0) : "Free"}
+                </span>
               </div>
               <div className="flex justify-between text-sm font-extrabold text-foreground pt-1">
                 <span>Total Amount Paid</span>

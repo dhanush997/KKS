@@ -14,6 +14,9 @@ interface OrderItem {
   size: string;
   quantity: number;
   price: number;
+  discount?: number;
+  shippingFee?: number;
+  couponCode?: string | null;
 }
 
 interface Order {
@@ -24,6 +27,8 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   totalAmount: number;
+  shippingTotal: number;
+  discountTotal: number;
   estimatedDeliveryDate: string;
   trackingNo?: string | null;
   trackingUrl?: string | null;
@@ -321,14 +326,48 @@ export default function AdminOrdersPage() {
               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Packaged Items</h4>
               <div className="divide-y divide-border border rounded-lg px-4 overflow-hidden bg-neutral-50/50">
                 {selectedOrder.orderItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center py-2.5 text-xs">
-                    <div>
-                      <span className="font-extrabold text-foreground">{item.name}</span>
-                      <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">Size: {item.size} | Qty: {item.quantity}</p>
+                  <div key={item.id} className="py-2.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-extrabold text-foreground">{item.name}</span>
+                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">Size: {item.size} | Qty: {item.quantity}</p>
+                      </div>
+                      <span className="font-bold text-foreground">{formatPrice(item.price * item.quantity)}</span>
                     </div>
-                    <span className="font-bold text-foreground">{formatPrice(item.price * item.quantity)}</span>
+                    {(item.discount || 0) > 0 && (
+                      <p className="text-[10px] text-rose-600 font-bold mt-1 text-right">
+                        Discount ({item.couponCode || "Coupon"}): -{formatPrice(item.discount || 0)}
+                      </p>
+                    )}
+                    {(item.shippingFee || 0) > 0 && (
+                      <p className="text-[10px] text-neutral-500 font-bold mt-0.5 text-right">
+                        Shipping: +{formatPrice(item.shippingFee || 0)}
+                      </p>
+                    )}
                   </div>
                 ))}
+
+                {/* Subtotal row */}
+                <div className="flex justify-between items-center py-2 text-xs font-semibold text-muted-foreground border-t border-border bg-neutral-100/10 -mx-4 px-4">
+                  <span>Subtotal</span>
+                  <span>{formatPrice(selectedOrder.totalAmount - (selectedOrder.shippingTotal || 0) + (selectedOrder.discountTotal || 0))}</span>
+                </div>
+
+                {/* Discount Total row */}
+                {(selectedOrder.discountTotal || 0) > 0 && (
+                  <div className="flex justify-between items-center py-2 text-xs font-bold text-rose-600 -mx-4 px-4 bg-neutral-100/10">
+                    <span>Discounts</span>
+                    <span>-{formatPrice(selectedOrder.discountTotal)}</span>
+                  </div>
+                )}
+
+                {/* Shipping Total row */}
+                <div className="flex justify-between items-center py-2 text-xs font-semibold text-muted-foreground -mx-4 px-4 bg-neutral-100/10">
+                  <span>Shipping Total</span>
+                  <span>{(selectedOrder.shippingTotal || 0) > 0 ? formatPrice(selectedOrder.shippingTotal) : "Free"}</span>
+                </div>
+
+                {/* Grand Total row */}
                 <div className="flex justify-between items-center py-3 text-xs font-extrabold text-foreground border-t border-border bg-neutral-100/50 -mx-4 px-4">
                   <span>Grand Total</span>
                   <span>{formatPrice(selectedOrder.totalAmount)}</span>

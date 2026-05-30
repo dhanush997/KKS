@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatPrice, calculateEDD, formatDate } from "@/lib/utils";
+import { calculateItemFinancials } from "@/lib/coupons";
 import { ShieldCheck, Calendar, CreditCard, Truck, Loader2, ShieldAlert } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 
@@ -35,6 +36,7 @@ function CheckoutForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGuest = searchParams.get("guest") === "true";
+  const isAdmin = session?.user?.role === "ADMIN";
 
   // Form State
   const [address, setAddress] = useState({
@@ -52,6 +54,12 @@ function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
+  // Coupon States per item
+  const [couponInputs, setCouponInputs] = useState<Record<string, string>>({});
+  const [appliedCoupons, setAppliedCoupons] = useState<Record<string, string>>({});
+  const [couponErrors, setCouponErrors] = useState<Record<string, string>>({});
+  const [appliedCouponDetails, setAppliedCouponDetails] = useState<Record<string, { type: string; value: number }>>({});
 
   // Sandbox testing simulation modal
   const [sandboxOrderData, setSandboxOrderData] = useState<any>(null);
@@ -246,7 +254,10 @@ function CheckoutForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cartItems: cart,
+          cartItems: cart.map((item) => ({
+            ...item,
+            couponCode: appliedCoupons[item.id] || null,
+          })),
           paymentMethod,
           shippingAddress: selectedAddressId === "new" || !selectedAddressId ? address : null,
           addressId: selectedAddressId !== "new" && selectedAddressId ? selectedAddressId : null,
@@ -374,6 +385,27 @@ function CheckoutForm() {
       </div>
     );
   }
+
+  // Dynamic item-level coupon and shipping calculations
+  let totalShipping = 0;
+  let totalDiscount = 0;
+  let calculatedGrandTotal = 0;
+
+  const cartWithFinancials = cart.map((item) => {
+    const couponDetail = appliedCoupons[item.id] ? {
+      code: appliedCoupons[item.id],
+      type: appliedCouponDetails[item.id]?.type || "PERCENT",
+      value: appliedCouponDetails[item.id]?.value || 0,
+    } : null;
+    const financials = calculateItemFinancials(item.price, item.quantity, couponDetail);
+    totalShipping += financials.shippingFee;
+    totalDiscount += financials.discount;
+    calculatedGrandTotal += financials.total;
+    return {
+      ...item,
+      ...financials,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full flex-grow flex flex-col">
@@ -541,22 +573,107 @@ function CheckoutForm() {
             </h2>
 
             {/* Scrollable list of items */}
-            <div className="mt-4 max-h-[30vh] overflow-y-auto divide-y divide-border pr-2">
-              {cart.map((item) => (
-                <div key={item.id} className="flex gap-3 py-3 text-xs font-semibold">
-                  <div className="relative h-12 w-9 rounded overflow-hidden shrink-0 border border-border bg-neutral-100">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      className="object-cover"
-                    />
+            <div className="mt-4 max-h-[40vh] overflow-y-auto divide-y divide-border pr-2 space-y-3">
+              {cartWithFinancials.map((item) => (
+                <div key={item.id} className="py-3 text-xs font-semibold space-y-2">
+                  <div className="flex gap-3">
+                    <div className="relative h-12 w-9 rounded overflow-hidden shrink-0 border border-border bg-neutral-100">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-foreground font-bold line-clamp-1">{item.name}</p>
+                      <p className="text-[10px] text-muted-foreground">Qty: {item.quantity} | Size: {item.size}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Shipping: {item.shippingFee > 0 ? `${formatPrice(item.shippingFee)}` : <span className="text-emerald-600 font-bold">Free</span>}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-foreground font-bold">{formatPrice(item.subtotal)}</span>
+                      {item.discount > 0 && (
+                        <p className="text-[10px] text-rose-600 font-bold mt-0.5">-{formatPrice(item.discount)}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-grow">
-                    <p className="text-foreground font-bold line-clamp-1">{item.name}</p>
-                    <p className="text-[10px] text-muted-foreground">Qty: {item.quantity} | Size: {item.size}</p>
+                  
+                  {/* Coupon section per item */}
+                  <div className="bg-neutral-100/50 p-2 rounded border border-border/60">
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="text"
+                        placeholder="Coupon Code"
+                        value={couponInputs[item.id] || ""}
+                        onChange={(e) => setCouponInputs({ ...couponInputs, [item.id]: e.target.value })}
+                        className="flex-grow h-7 px-2 border border-border rounded text-[10px] uppercase font-bold focus:outline-none focus:border-gold-600 bg-white"
+                        disabled={!!appliedCoupons[item.id]}
+                      />
+                      {appliedCoupons[item.id] ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newApplied = { ...appliedCoupons };
+                            delete newApplied[item.id];
+                            setAppliedCoupons(newApplied);
+
+                            const newDetails = { ...appliedCouponDetails };
+                            delete newDetails[item.id];
+                            setAppliedCouponDetails(newDetails);
+
+                            const newInputs = { ...couponInputs };
+                            newInputs[item.id] = "";
+                            setCouponInputs(newInputs);
+                          }}
+                          className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] uppercase font-bold transition-colors shrink-0 cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const code = couponInputs[item.id] || "";
+                            if (!code.trim()) return;
+
+                            try {
+                              const res = await fetch("/api/coupons/validate", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ code, isAdmin }),
+                              });
+                              const data = await res.json();
+                              if (res.ok && data.success) {
+                                setAppliedCoupons({ ...appliedCoupons, [item.id]: data.coupon.code });
+                                setAppliedCouponDetails({
+                                  ...appliedCouponDetails,
+                                  [item.id]: { type: data.coupon.type, value: data.coupon.value }
+                                });
+                                setCouponErrors({ ...couponErrors, [item.id]: "" });
+                              } else {
+                                setCouponErrors({ ...couponErrors, [item.id]: data.error || "Invalid code" });
+                              }
+                            } catch (err) {
+                              setCouponErrors({ ...couponErrors, [item.id]: "Validation failed" });
+                            }
+                          }}
+                          className="h-7 px-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded text-[10px] uppercase font-bold transition-colors shrink-0 cursor-pointer"
+                        >
+                          Apply
+                        </button>
+                      )}
+                    </div>
+                    {couponErrors[item.id] && (
+                      <p className="text-[9px] text-rose-600 font-bold mt-1 pl-1">{couponErrors[item.id]}</p>
+                    )}
+                    {appliedCoupons[item.id] && (
+                      <p className="text-[9px] text-emerald-600 font-bold mt-1 pl-1">
+                        Coupon "{appliedCoupons[item.id]}" applied!
+                      </p>
+                    )}
                   </div>
-                  <span className="text-foreground font-bold">{formatPrice(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -567,13 +684,21 @@ function CheckoutForm() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground">{formatPrice(cartTotal)}</span>
               </div>
+              {totalDiscount > 0 && (
+                <div className="flex items-center justify-between text-xs text-rose-600 font-bold">
+                  <span>Discounts</span>
+                  <span>-{formatPrice(totalDiscount)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-xs border-b border-border pb-3">
                 <span className="text-muted-foreground">Shipping</span>
-                <span className="text-emerald-600 uppercase font-bold">Free</span>
+                <span className={totalShipping > 0 ? "text-foreground font-bold" : "text-emerald-600 uppercase font-bold"}>
+                  {totalShipping > 0 ? formatPrice(totalShipping) : "Free"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-base font-extrabold text-foreground pt-1">
                 <span>Total Amount</span>
-                <span>{formatPrice(cartTotal)}</span>
+                <span>{formatPrice(calculatedGrandTotal)}</span>
               </div>
             </div>
 

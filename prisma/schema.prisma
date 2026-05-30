@@ -128,6 +128,8 @@ model Order {
   addressId              String
   address                Address     @relation(fields: [addressId], references: [id])
   totalAmount            Float
+  shippingTotal          Float       @default(0)
+  discountTotal          Float       @default(0)
   status                 String      @default("PENDING") // "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
   paymentMethod          String      // "COD" or "RAZORPAY"
   paymentStatus          String      @default("PENDING") // "PENDING", "COMPLETED", "FAILED", "REFUNDED"
@@ -150,6 +152,9 @@ model OrderItem {
   size      String
   quantity  Int
   price     Float
+  discount  Float    @default(0)
+  shippingFee Float  @default(0)
+  couponCode String?
   image     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -176,5 +181,33 @@ model Wishlist {
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])
+}
+
+model SalesBanner {
+  id          String   @id @default(uuid())
+  title       String
+  subtitle    String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  couponCode  String?
+  bannerType  String   @default("FESTIVE") // "FESTIVE", "BLACK_FRIDAY", "FLASH_SALE", etc.
+  bgGradient  String   @default("from-amber-500 to-rose-600")
+  textColor   String   @default("text-white")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Coupon {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  type        String   // "PERCENT" or "FIXED"
+  value       Float
+  isActive    Boolean  @default(true)
+  isAdminOnly Boolean  @default(false)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 

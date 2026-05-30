@@ -34,6 +34,8 @@ interface EmailOrderItem {
   size: string;
   quantity: number;
   price: number;
+  discount?: number;
+  shippingFee?: number;
   image: string;
 }
 
@@ -79,6 +81,19 @@ export async function sendOrderEmails(orderData: OrderEmailData) {
     maximumFractionDigits: 0,
   }).format(totalAmount);
 
+  // Calculate dynamic breakdowns
+  const totalSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalShipping = items.reduce((sum, item) => sum + (item.shippingFee || 0), 0);
+  const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
+
+  const formattedSubtotal = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalSubtotal);
+  const formattedShipping = totalShipping > 0 
+    ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalShipping)
+    : "Free";
+  const formattedDiscount = totalDiscount > 0 
+    ? `-${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalDiscount)}`
+    : null;
+
   // 1. Build Item List HTML
   const itemsHtml = items
     .map(
@@ -89,10 +104,20 @@ export async function sendOrderEmails(orderData: OrderEmailData) {
           <div style="float: left;">
             <p style="margin: 0; font-weight: 600; color: #1f2937;">${item.name}</p>
             <p style="margin: 0; font-size: 12px; color: #6b7280;">Size: ${item.size} | Qty: ${item.quantity}</p>
+            ${
+              item.shippingFee && item.shippingFee > 0
+                ? `<p style="margin: 2px 0 0 0; font-size: 11px; color: #b28555;">Shipping: ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.shippingFee)}</p>`
+                : ""
+            }
           </div>
         </td>
         <td style="padding: 12px 0; text-align: right; font-weight: 600; color: #1f2937; vertical-align: middle;">
           ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.price * item.quantity)}
+          ${
+            item.discount && item.discount > 0
+              ? `<br/><span style="font-size: 11px; color: #dc2626;">Discount: -${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.discount)}</span>`
+              : ""
+          }
         </td>
       </tr>
     `
@@ -138,6 +163,22 @@ export async function sendOrderEmails(orderData: OrderEmailData) {
                   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
                     ${itemsHtml}
                     <tr>
+                      <td style="padding: 12px 0 0 0; font-size: 14px; color: #4b5563;">Subtotal</td>
+                      <td style="padding: 12px 0 0 0; font-size: 14px; color: #1f2937; text-align: right;">${formattedSubtotal}</td>
+                    </tr>
+                    ${
+                      formattedDiscount
+                        ? `<tr>
+                            <td style="padding: 8px 0 0 0; font-size: 14px; color: #dc2626; font-weight: 600;">Discounts</td>
+                            <td style="padding: 8px 0 0 0; font-size: 14px; color: #dc2626; font-weight: 600; text-align: right;">${formattedDiscount}</td>
+                          </tr>`
+                        : ""
+                    }
+                    <tr>
+                      <td style="padding: 8px 0 0 0; font-size: 14px; color: #4b5563;">Shipping</td>
+                      <td style="padding: 8px 0 0 0; font-size: 14px; color: #1f2937; text-align: right;">${formattedShipping}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #eaeaea;">
                       <td style="padding: 16px 0 0 0; font-size: 15px; font-weight: bold; color: #111827;">Total Amount Paid</td>
                       <td style="padding: 16px 0 0 0; font-size: 18px; font-weight: 800; color: #111827; text-align: right;">${formattedTotal}</td>
                     </tr>
@@ -355,7 +396,7 @@ interface OrderUpdateEmailData {
   status: string;
   trackingNo?: string | null;
   trackingUrl?: string | null;
-  items: { name: string; size: string; quantity: number; price: number; image: string }[];
+  items: EmailOrderItem[];
 }
 
 /**
@@ -366,6 +407,21 @@ export async function sendOrderStatusUpdateEmail(data: OrderUpdateEmailData) {
   const { orderNumber, customerName, customerEmail, status, trackingNo, trackingUrl, items } = data;
 
   const subject = `Order Update: ${orderNumber} - Status changed to ${status} - KK Brand`;
+
+  // Calculate dynamic breakdowns
+  const totalSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalShipping = items.reduce((sum, item) => sum + (item.shippingFee || 0), 0);
+  const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
+  const grandTotal = totalSubtotal + totalShipping - totalDiscount;
+
+  const formattedSubtotal = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalSubtotal);
+  const formattedShipping = totalShipping > 0 
+    ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalShipping)
+    : "Free";
+  const formattedDiscount = totalDiscount > 0 
+    ? `-${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalDiscount)}`
+    : null;
+  const formattedTotal = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(grandTotal);
 
   // Define some nice descriptive text for each status
   let statusText = `Your order status has been updated to ${status}.`;
@@ -404,10 +460,20 @@ export async function sendOrderStatusUpdateEmail(data: OrderUpdateEmailData) {
           <div style="float: left;">
             <p style="margin: 0; font-weight: 600; color: #1f2937;">${item.name}</p>
             <p style="margin: 0; font-size: 12px; color: #6b7280;">Size: ${item.size} | Qty: ${item.quantity}</p>
+            ${
+              item.shippingFee && item.shippingFee > 0
+                ? `<p style="margin: 2px 0 0 0; font-size: 11px; color: #b28555;">Shipping: ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.shippingFee)}</p>`
+                : ""
+            }
           </div>
         </td>
         <td style="padding: 12px 0; text-align: right; font-weight: 600; color: #1f2937; vertical-align: middle;">
           ${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.price * item.quantity)}
+          ${
+            item.discount && item.discount > 0
+              ? `<br/><span style="font-size: 11px; color: #dc2626;">Discount: -${new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(item.discount)}</span>`
+              : ""
+          }
         </td>
       </tr>
     `
@@ -451,6 +517,26 @@ export async function sendOrderStatusUpdateEmail(data: OrderUpdateEmailData) {
                   <h3 style="color: #111827; font-size: 15px; font-weight: 700; border-bottom: 2px solid #111827; padding-bottom: 6px; margin: 32px 0 12px 0;">Order Summary</h3>
                   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
                     ${itemsHtml}
+                    <tr>
+                      <td style="padding: 12px 0 0 0; font-size: 13px; color: #4b5563;">Subtotal</td>
+                      <td style="padding: 12px 0 0 0; font-size: 13px; color: #1f2937; text-align: right;">${formattedSubtotal}</td>
+                    </tr>
+                    ${
+                      formattedDiscount
+                        ? `<tr>
+                            <td style="padding: 6px 0 0 0; font-size: 13px; color: #dc2626; font-weight: 600;">Discounts</td>
+                            <td style="padding: 6px 0 0 0; font-size: 13px; color: #dc2626; font-weight: 600; text-align: right;">${formattedDiscount}</td>
+                          </tr>`
+                        : ""
+                    }
+                    <tr>
+                      <td style="padding: 6px 0 0 0; font-size: 13px; color: #4b5563;">Shipping</td>
+                      <td style="padding: 6px 0 0 0; font-size: 13px; color: #1f2937; text-align: right;">${formattedShipping}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #eaeaea;">
+                      <td style="padding: 12px 0 0 0; font-size: 14px; font-weight: bold; color: #111827;">Total Amount Paid</td>
+                      <td style="padding: 12px 0 0 0; font-size: 15px; font-weight: 800; color: #111827; text-align: right;">${formattedTotal}</td>
+                    </tr>
                   </table>
 
                   <p style="color: #4b5563; font-size: 13px; line-height: 1.5; margin-top: 24px;">Thank you for shopping with KK BRAND. We appreciate your patience as we fulfill your order.</p>

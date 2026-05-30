@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { calculateEDD, generateOrderNumber } from "@/lib/utils";
 import { createRazorpayOrder } from "@/lib/razorpay";
 import { sendOrderEmails } from "@/lib/email";
+import { calculateItemFinancials } from "@/lib/coupons";
 
 // 1. GET - Retrieve orders (Customers see theirs; Admins see all)
 export async function GET(req: NextRequest) {
@@ -139,9 +140,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid shipping destination. KK BRAND only delivers within India at this time." }, { status: 400 });
     }
 
-    // 2. Calculate Total & Validate Inventory Stocks
-    let totalAmount = 0;
+    // 2. Calculate Total, validate coupon discounts, shipping fee thresholds & Validate Inventory Stocks
+    let totalAmount = 0; // grand total (subtotals + shipping - discounts)
+    let shippingTotal = 0;
+    let discountTotal = 0;
+    
     const inventoryUpdates: { inventoryId: string; newStock: number }[] = [];
+    const calculatedItems: any[] = [];
 
     for (const item of cartItems) {
       // Find inventory entry for specific product & size
@@ -160,10 +165,69 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Insufficient stock for ${item.name} (Size: ${item.size}). Available: ${inv.stock}` }, { status: 400 });
       }
 
-      totalAmount += item.price * item.quantity;
+      // Load product details to get verified price
+      const product = await db.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      if (!product) {
+        return NextResponse.json({ error: `Product ${item.name} not found.` }, { status: 404 });
+      }
+
+      let dbCoupon = null;
+      if (item.couponCode) {
+        const cleanCode = item.couponCode.trim().toUpperCase();
+        const coupon = await (db as any).coupon.findUnique({
+          where: { code: cleanCode },
+        });
+
+        if (!coupon) {
+          return NextResponse.json({ error: `Invalid coupon code: ${item.couponCode}` }, { status: 400 });
+        }
+
+        if (!coupon.isActive) {
+          return NextResponse.json({ error: `The coupon ${item.couponCode} is currently inactive.` }, { status: 400 });
+        }
+
+        const now = new Date();
+        if (now < new Date(coupon.startDate) || now > new Date(coupon.endDate)) {
+          return NextResponse.json({ error: `The coupon ${item.couponCode} has expired or is not yet active.` }, { status: 400 });
+        }
+
+        const isAdmin = session?.user?.role === "ADMIN";
+        if (coupon.isAdminOnly && !isAdmin) {
+          return NextResponse.json({ error: `The coupon ${item.couponCode} is restricted to administrators.` }, { status: 400 });
+        }
+
+        dbCoupon = {
+          code: coupon.code,
+          type: coupon.type,
+          value: coupon.value,
+        };
+      }
+
+      // Calculate financials for this item using the dynamic coupon helpers
+      const financials = calculateItemFinancials(product.price, item.quantity, dbCoupon);
+      
+      shippingTotal += financials.shippingFee;
+      discountTotal += financials.discount;
+      totalAmount += financials.total;
+
       inventoryUpdates.push({
         inventoryId: inv.id,
         newStock: inv.stock - item.quantity,
+      });
+
+      calculatedItems.push({
+        productId: item.productId,
+        name: item.name,
+        size: item.size,
+        quantity: item.quantity,
+        price: product.price, // verified DB price
+        discount: financials.discount,
+        shippingFee: financials.shippingFee,
+        couponCode: item.couponCode || null,
+        image: item.image,
       });
     }
 
@@ -182,6 +246,8 @@ export async function POST(req: NextRequest) {
             userId,
             addressId: selectedAddress.id,
             totalAmount,
+            shippingTotal,
+            discountTotal,
             status: "PROCESSING", // COD starts processing directly
             paymentMethod,
             paymentStatus: "PENDING",
@@ -190,7 +256,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Create Order Items
-        for (const item of cartItems) {
+        for (const item of calculatedItems) {
           await tx.orderItem.create({
             data: {
               orderId: createdOrder.id,
@@ -199,6 +265,9 @@ export async function POST(req: NextRequest) {
               size: item.size,
               quantity: item.quantity,
               price: item.price,
+              discount: item.discount,
+              shippingFee: item.shippingFee,
+              couponCode: item.couponCode,
               image: item.image,
             },
           });
@@ -233,9 +302,9 @@ export async function POST(req: NextRequest) {
           customerEmail: customerEmail,
           totalAmount,
           paymentMethod,
-          shippingAddress: selectedAddress,
+          shippingAddress: selectedAddress as any,
           edd,
-          items: cartItems,
+          items: calculatedItems,
         });
       } catch (err) {
         console.error("Order placed but email dispatch failed:", err);
@@ -255,6 +324,8 @@ export async function POST(req: NextRequest) {
             userId,
             addressId: selectedAddress.id,
             totalAmount,
+            shippingTotal,
+            discountTotal,
             status: "PENDING", // Stays pending until payment is verified
             paymentMethod,
             paymentStatus: "PENDING",
@@ -263,7 +334,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Create Order Items
-        for (const item of cartItems) {
+        for (const item of calculatedItems) {
           await tx.orderItem.create({
             data: {
               orderId: createdOrder.id,
@@ -272,6 +343,9 @@ export async function POST(req: NextRequest) {
               size: item.size,
               quantity: item.quantity,
               price: item.price,
+              discount: item.discount,
+              shippingFee: item.shippingFee,
+              couponCode: item.couponCode,
               image: item.image,
             },
           });

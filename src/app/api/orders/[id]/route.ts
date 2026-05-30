@@ -166,11 +166,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           status: updatedOrder.status,
           trackingNo: (updatedOrder as any).trackingNo,
           trackingUrl: (updatedOrder as any).trackingUrl,
-          items: currentOrder.orderItems.map((item) => ({
+          items: currentOrder.orderItems.map((item: any) => ({
             name: item.name,
             size: item.size,
             quantity: item.quantity,
             price: item.price,
+            discount: item.discount,
+            shippingFee: item.shippingFee,
             image: item.image,
           })),
         });

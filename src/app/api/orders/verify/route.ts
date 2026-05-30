@@ -104,11 +104,13 @@ export async function POST(req: NextRequest) {
 
     // 4. Trigger email notifications
     try {
-      const emailItems = order.orderItems.map((item) => ({
+      const emailItems = order.orderItems.map((item: any) => ({
         name: item.name,
         size: item.size,
         quantity: item.quantity,
         price: item.price,
+        discount: item.discount,
+        shippingFee: item.shippingFee,
         image: item.image,
       }));
 

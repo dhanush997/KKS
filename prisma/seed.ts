@@ -6,6 +6,135 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding started...");
 
+  // Seed Sales Banners if none exist (running regardless of whether users exist)
+  const bannerCount = await (prisma as any).salesBanner.count();
+  if (bannerCount === 0) {
+    console.log("Seeding promotional sales banners...");
+    const now = new Date();
+    const diwaliStart = new Date(now.getTime() - 24 * 60 * 60 * 1000); // yesterday
+    const diwaliEnd = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
+    
+    const blackFridayStart = new Date(now.getFullYear(), 10, 24); // Nov 24
+    const blackFridayEnd = new Date(now.getFullYear(), 10, 30); // Nov 30
+
+    await (prisma as any).salesBanner.createMany({
+      data: [
+        {
+          title: "Diwali Festive Dhamaka",
+          subtitle: "Flat 20% Off on All Traditional & Premium Wear! Code: KK20",
+          startDate: diwaliStart,
+          endDate: diwaliEnd,
+          isActive: true,
+          couponCode: "KK20",
+          bannerType: "FESTIVE",
+          bgGradient: "from-amber-600 via-red-600 to-rose-800",
+          textColor: "text-white",
+        },
+        {
+          title: "Black Friday Mega Sale",
+          subtitle: "Up to 50% Off site-wide! Code: KK50",
+          startDate: blackFridayStart,
+          endDate: blackFridayEnd,
+          isActive: false, // Inactive by default until dates match
+          couponCode: "KK50",
+          bannerType: "BLACK_FRIDAY",
+          bgGradient: "from-neutral-950 via-neutral-900 to-neutral-800",
+          textColor: "text-white",
+        },
+        {
+          title: "Flash Midnight Sale",
+          subtitle: "Flat 100 INR Off on all products! Code: FLAT100",
+          startDate: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 hrs ago
+          endDate: new Date(now.getTime() + 4 * 60 * 60 * 1000), // 4 hrs from now
+          isActive: false, // toggle active via admin dashboard
+          couponCode: "FLAT100",
+          bannerType: "FLASH_SALE",
+          bgGradient: "from-indigo-900 via-purple-800 to-pink-700",
+          textColor: "text-white",
+        }
+      ]
+    });
+    console.log("Promotional sales banners seeded successfully.");
+  }
+
+  // Seed Coupons if none exist
+  const couponCount = await (prisma as any).coupon.count();
+  if (couponCount === 0) {
+    console.log("Seeding discount coupons...");
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+    const endDate = new Date(now.getFullYear() + 2, 11, 31); // 2 years from now
+
+    await (prisma as any).coupon.createMany({
+      data: [
+        {
+          code: "KK10",
+          type: "PERCENT",
+          value: 10,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "KK20",
+          type: "PERCENT",
+          value: 20,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "KK50",
+          type: "PERCENT",
+          value: 50,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "FLAT100",
+          type: "FIXED",
+          value: 100,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "TRYKKBRAND5",
+          type: "PERCENT",
+          value: 5,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "NEW10",
+          type: "PERCENT",
+          value: 10,
+          isActive: true,
+          isAdminOnly: false,
+          startDate,
+          endDate,
+        },
+        {
+          code: "KKADMINFREE",
+          type: "PERCENT",
+          value: 100,
+          isActive: true,
+          isAdminOnly: true, // Restricted to Admin
+          startDate,
+          endDate,
+        },
+      ],
+    });
+    console.log("Discount coupons seeded successfully.");
+  }
+
   // Check if database is already seeded to prevent overwriting production data
   const userCount = await prisma.user.count();
   if (userCount > 0) {

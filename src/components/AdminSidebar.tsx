@@ -10,7 +10,9 @@ import {
   FolderTree,
   FileSpreadsheet,
   Users,
+  Sparkles,
   ArrowLeft,
+  Tag,
 } from "lucide-react";
 
 export function AdminSidebar() {
@@ -46,6 +48,18 @@ export function AdminSidebar() {
       href: "/admin/customers",
       icon: Users,
       active: pathname === "/admin/customers",
+    },
+    {
+      label: "Banners",
+      href: "/admin/banners",
+      icon: Sparkles,
+      active: pathname === "/admin/banners",
+    },
+    {
+      label: "Coupons",
+      href: "/admin/coupons",
+      icon: Tag,
+      active: pathname === "/admin/coupons",
     },
   ];
 

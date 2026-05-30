@@ -60,6 +60,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
   
   const [selectedSize, setSelectedSize] = useState(initialSize);
   const [quantity, setQuantity] = useState(1);
+  const [dbCoupons, setDbCoupons] = useState<{ code: string; type: string; value: number }[]>([]);
 
   // Accordion toggle states
   const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({
@@ -83,9 +84,42 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
     setQuantity(1);
   }, [selectedSize]);
 
+  // Fetch active coupons on mount
+  useEffect(() => {
+    fetch("/api/coupons")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setDbCoupons(data);
+        }
+      })
+      .catch((err) => console.error("Error fetching coupons:", err));
+  }, []);
+
   // Calculate EDD
   const edd = calculateEDD();
   const formattedEDD = formatDate(edd);
+
+  // Dynamic Coupons determination
+  const candidateCoupons = [];
+  if (product.price >= 10000) {
+    candidateCoupons.push({ code: "KK50", desc: "Enjoy 50% off on this luxury garment." });
+    candidateCoupons.push({ code: "KK20", desc: "Enjoy 20% off on this luxury garment." });
+  } else if (product.price >= 4000) {
+    candidateCoupons.push({ code: "KK20", desc: "Enjoy 20% off on this premium garment." });
+    candidateCoupons.push({ code: "FLAT100", desc: "Enjoy flat ₹100 off on this premium garment." });
+  } else if (product.category.slug.includes("shirts") || product.category.slug.includes("tops") || product.category.slug.includes("polo")) {
+    candidateCoupons.push({ code: "KK10", desc: "Enjoy 10% off on selected shirts & tops." });
+    candidateCoupons.push({ code: "TRYKKBRAND5", desc: "Enjoy 5% off on first web order." });
+  } else {
+    candidateCoupons.push({ code: "KK10", desc: "Enjoy 10% off on this garment." });
+    candidateCoupons.push({ code: "FLAT100", desc: "Enjoy flat ₹100 off on this garment." });
+  }
+
+  // Filter candidate coupons by what is actually active in the database
+  const coupons = candidateCoupons.filter((c) =>
+    dbCoupons.some((dbC) => dbC.code.toUpperCase() === c.code.toUpperCase())
+  );
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
@@ -189,29 +223,24 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
           </div>
 
           {/* Promo code banners cards (Snitch Style) */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div
-              onClick={() => copyPromoCode("TRYKKBRAND5")}
-              className="border border-dashed border-neutral-300 bg-neutral-50/50 p-2.5 cursor-pointer hover:bg-neutral-100 transition-colors"
-            >
-              <div className="flex items-center justify-between text-[10px] font-black tracking-wider text-black">
-                <span>TRYKKBRAND5</span>
-                <Copy className="h-3 w-3 text-neutral-400" />
-              </div>
-              <p className="text-[9px] text-neutral-400 mt-1 uppercase font-bold tracking-wider">Enjoy 5% off on first web order.</p>
+          {coupons.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {coupons.map((cp) => (
+                <div
+                  key={cp.code}
+                  onClick={() => copyPromoCode(cp.code)}
+                  className="border border-dashed border-neutral-300 bg-neutral-50/50 p-2.5 cursor-pointer hover:bg-neutral-100 transition-colors"
+                  title="Click to copy coupon code"
+                >
+                  <div className="flex items-center justify-between text-[10px] font-black tracking-wider text-black">
+                    <span>{cp.code}</span>
+                    <Copy className="h-3 w-3 text-neutral-400" />
+                  </div>
+                  <p className="text-[9px] text-neutral-400 mt-1 uppercase font-bold tracking-wider">{cp.desc}</p>
+                </div>
+              ))}
             </div>
-            
-            <div
-              onClick={() => copyPromoCode("NEW10")}
-              className="border border-dashed border-neutral-300 bg-neutral-50/50 p-2.5 cursor-pointer hover:bg-neutral-100 transition-colors"
-            >
-              <div className="flex items-center justify-between text-[10px] font-black tracking-wider text-black">
-                <span>NEW10</span>
-                <Copy className="h-3 w-3 text-neutral-400" />
-              </div>
-              <p className="text-[9px] text-neutral-400 mt-1 uppercase font-bold tracking-wider">Enjoy 10% off sitewide.</p>
-            </div>
-          </div>
+          )}
 
           {/* Color Indicator Swatches */}
           <div className="mt-5">

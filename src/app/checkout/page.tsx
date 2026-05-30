@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatPrice, calculateEDD, formatDate } from "@/lib/utils";
-import { ShieldCheck, Calendar, CreditCard, Truck, Loader2 } from "lucide-react";
+import { ShieldCheck, Calendar, CreditCard, Truck, Loader2, ShieldAlert } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
 
 // Helper to load external scripts (Razorpay SDK)
 function loadScript(src: string): Promise<boolean> {
@@ -51,6 +52,10 @@ function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
+  // Sandbox testing simulation modal
+  const [sandboxOrderData, setSandboxOrderData] = useState<any>(null);
+  const [isSandboxOpen, setIsSandboxOpen] = useState(false);
 
   // Redirect if not logged in and not continuing as guest
   useEffect(() => {
@@ -131,6 +136,63 @@ function CheckoutForm() {
   const edd = calculateEDD();
   const formattedEDD = formatDate(edd);
 
+  const handleSimulatePaymentSuccess = async () => {
+    if (!sandboxOrderData) return;
+    setIsSandboxOpen(false);
+    setIsSubmitting(true);
+    try {
+      const mockResponse = {
+        razorpay_order_id: sandboxOrderData.gatewayOrder.id,
+        razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        razorpay_signature: "mock_signature_approved",
+      };
+
+      const verifyRes = await fetch("/api/orders/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: mockResponse.razorpay_order_id,
+          razorpay_payment_id: mockResponse.razorpay_payment_id,
+          razorpay_signature: mockResponse.razorpay_signature,
+          orderId: sandboxOrderData.orderId,
+        }),
+      });
+
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Signature verification failed.");
+      }
+
+      toast({
+        title: "Payment Verified (Sandbox)",
+        description: `Order ${sandboxOrderData.orderNumber} confirmed. Receipt sent.`,
+        variant: "success",
+      });
+
+      clearCart();
+      router.push(`/checkout/success?orderNumber=${sandboxOrderData.orderNumber}&edd=${encodeURIComponent(edd.toISOString())}&method=RAZORPAY`);
+    } catch (verifyErr: any) {
+      console.error("Verification processing failed:", verifyErr);
+      toast({
+        title: "Verification Error",
+        description: verifyErr.message || "Payment verified but database update failed. Contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSimulatePaymentCancel = () => {
+    setIsSandboxOpen(false);
+    toast({
+      title: "Checkout Cancelled (Sandbox)",
+      description: "You closed the sandbox payment portal.",
+      variant: "info",
+    });
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAddress((prev) => ({ ...prev, [name]: value }));
@@ -210,13 +272,21 @@ function CheckoutForm() {
       }
 
       // 3. Online Payment (Razorpay) Flow
+      // Check if it's a mock order (sandbox mode due to placeholder credentials)
+      if (orderData.gatewayOrder.id.startsWith("order_mock_")) {
+        setSandboxOrderData(orderData);
+        setIsSandboxOpen(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       const isScriptLoaded = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
       if (!isScriptLoaded) {
         throw new Error("Razorpay SDK failed to load. Check your internet connection.");
       }
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_your_razorpay_key_id",
+        key: orderData.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_your_razorpay_key_id",
         amount: orderData.gatewayOrder.amount, // in Paisa
         currency: orderData.gatewayOrder.currency,
         name: "KK Brand",
@@ -265,7 +335,7 @@ function CheckoutForm() {
         prefill: {
           name: address.name,
           contact: address.phone,
-          email: session?.user?.email || "",
+          email: address.email || session?.user?.email || "",
         },
         theme: {
           color: "#111827", // Rich charcoal brand color
@@ -284,6 +354,7 @@ function CheckoutForm() {
 
       const razorpayWidget = new (window as any).Razorpay(options);
       razorpayWidget.open();
+      setIsSubmitting(false);
 
     } catch (error: any) {
       console.error("Order processing failure:", error);
@@ -296,7 +367,7 @@ function CheckoutForm() {
     }
   };
 
-  if (status === "loading" || status === "unauthenticated") {
+  if (status === "loading" || (status === "unauthenticated" && !isGuest)) {
     return (
       <div className="flex-grow flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -531,6 +602,59 @@ function CheckoutForm() {
         </div>
 
       </form>
+
+      {/* RAZORPAY SANDBOX SIMULATOR MODAL */}
+      <Dialog
+        isOpen={isSandboxOpen}
+        onClose={handleSimulatePaymentCancel}
+        title="Razorpay Sandbox Testing"
+        className="max-w-md"
+      >
+        {sandboxOrderData && (
+          <div className="space-y-6 text-xs font-semibold">
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 flex items-start gap-3">
+              <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-amber-800 uppercase tracking-wide">Developer Sandbox Mode</h4>
+                <p className="text-amber-700 font-medium mt-1 leading-relaxed">
+                  Real Razorpay credentials are not configured in your `.env`. You are in **Sandbox Mode** using a mock gateway.
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-border border rounded-lg px-4 bg-neutral-50/50">
+              <div className="flex justify-between py-2.5">
+                <span className="text-muted-foreground">Order Number</span>
+                <span className="text-foreground font-extrabold">{sandboxOrderData.orderNumber}</span>
+              </div>
+              <div className="flex justify-between py-2.5">
+                <span className="text-muted-foreground">Gateway ID</span>
+                <span className="text-foreground font-extrabold text-[10px]">{sandboxOrderData.gatewayOrder.id}</span>
+              </div>
+              <div className="flex justify-between py-3 font-extrabold text-foreground bg-neutral-100/50 -mx-4 px-4">
+                <span>Grand Total</span>
+                <span>{formatPrice(sandboxOrderData.gatewayOrder.amount / 100)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <Button
+                onClick={handleSimulatePaymentSuccess}
+                className="w-full h-11 uppercase font-bold tracking-wider"
+              >
+                Simulate Successful Payment
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSimulatePaymentCancel}
+                className="w-full h-11 uppercase font-bold tracking-wider"
+              >
+                Cancel / Decline Payment
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

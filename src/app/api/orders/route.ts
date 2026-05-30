@@ -299,6 +299,7 @@ export async function POST(req: NextRequest) {
           gatewayOrder: rzOrder,
           orderId: order.id,
           orderNumber: order.orderNumber,
+          razorpayKeyId: process.env.RAZORPAY_KEY_ID || "rzp_test_your_razorpay_key_id",
         },
         { status: 201 }
       );

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- Premium rounded square background -->
+  <rect width="120" height="120" rx="30" fill="#000000"/>
+  <!-- Stylized symmetric double-K monogram forming a central diamond -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left K vertical stem -->
+    <path d="M 42 32 L 42 88"/>
+    <!-- Left K arms meeting at the center line (x=60) -->
+    <path d="M 42 60 L 60 35 M 42 60 L 60 85"/>
+    <!-- Right K vertical stem -->
+    <path d="M 78 32 L 78 88"/>
+    <!-- Right K arms meeting at the center line (x=60) -->
+    <path d="M 78 60 L 60 35 M 78 60 L 60 85"/>
+  </g>
+</svg>

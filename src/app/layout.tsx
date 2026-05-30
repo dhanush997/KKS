@@ -1,0 +1,38 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/components/Providers";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "KK brand | Premium Minimalist Fashion Store",
+  description: "Browse and shop high-quality minimalist outerwear, knitwear, bottoms, and accessories. Experience premium fabrics and timeless designs.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  icons: {
+    icon: "/icon.svg",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="scroll-smooth">
+      <body className={cn(inter.className, "bg-white dark:bg-neutral-950 min-h-screen flex flex-col")}>
+        <Providers>
+          <Navbar />
+          <main className="flex-grow flex flex-col">
+            {children}
+          </main>
+          <Footer />
+        </Providers>
+      </body>
+    </html>
+  );
+}

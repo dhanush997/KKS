@@ -266,3 +266,78 @@ export async function sendOrderEmails(orderData: OrderEmailData) {
     console.log(`[FALLBACK] Order: ${orderNumber} | Customer: ${customerEmail} | Total: ${formattedTotal}`);
   }
 }
+
+/**
+ * Sends a password reset email to a customer with a secure JWT link.
+ */
+export async function sendPasswordResetEmail(email: string, name: string, resetLink: string) {
+  if (!transporter) {
+    console.log("================= SMTP NOT CONFIGURED =================\n");
+    console.log(`[PASSWORD RESET LOG] Sent to: ${email}`);
+    console.log(`Reset Link: ${resetLink}`);
+    console.log("=======================================================\n");
+    return;
+  }
+
+  const subject = "Reset your KK Brand Account Password";
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Reset Password</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fafafa; margin: 0; padding: 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fafafa; padding: 40px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="550" style="background-color: #ffffff; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);">
+              <!-- Header Banner -->
+              <tr>
+                <td style="background-color: #111827; padding: 30px; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">KK BRAND</h1>
+                </td>
+              </tr>
+              <!-- Body Content -->
+              <tr>
+                <td style="padding: 32px;">
+                  <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0;">Hello ${name},</h2>
+                  <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">We received a request to reset the password for your KK Brand account. Click the button below to choose a new password. This link is valid for 1 hour.</p>
+                  
+                  <!-- Button -->
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetLink}" style="background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: 700; display: inline-block; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Reset Password</a>
+                  </div>
+                  
+                  <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin-top: 24px;">If you did not request this, you can safely ignore this email. Your password will remain unchanged.</p>
+                  <p style="color: #9ca3af; font-size: 11px; margin-top: 16px; word-break: break-all;">Or copy and paste this URL into your browser:<br/><a href="${resetLink}" style="color: #b28555;">${resetLink}</a></p>
+                </td>
+              </tr>
+              <!-- Footer Details -->
+              <tr>
+                <td style="background-color: #f9fafb; padding: 20px; border-top: 1px solid #eaeaea; text-align: center;">
+                  <p style="margin: 0; font-size: 11px; color: #9ca3af;">&copy; 2026 KK Brand. All rights reserved.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"KK Brand" <${gmailUser}>`,
+      to: email,
+      subject: subject,
+      html: html,
+    });
+    console.log(`Password reset email successfully sent to ${email}`);
+  } catch (error) {
+    console.error("Failed to send password reset email via SMTP:", error);
+    throw error;
+  }
+}

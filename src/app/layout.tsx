@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KK brand | Premium Minimalist Fashion Store",
-  description: "Browse and shop high-quality minimalist outerwear, knitwear, bottoms, and accessories. Experience premium fabrics and timeless designs.",
+  title: "KK Brand | Online Fashion, Homeware & Kids Clothes | KK IN",
+  description: "Shop the latest trends in fashion, homeware, and kids clothes at KK Brand. Experience premium fabrics, timeless designs, and fast shipping.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   icons: {
     icon: "/icon.svg",

@@ -13,22 +13,41 @@ export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setIsSubmitting(true);
-    
-    // Simulate reset link dispatch
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to dispatch reset link.");
+      }
+
       setIsSubmitted(true);
       toast({
         title: "Link Dispatched",
-        description: `If an account matches ${email}, we have sent reset instructions.`,
+        description: data.message || `If an account matches ${email}, we have sent reset instructions.`,
         variant: "success",
       });
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error occurred",
+        description: error.message || "Unable to process request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendOrderStatusUpdateEmail } from "@/lib/email";
 
 // Helper to check admin session
 async function checkAdminSession() {
@@ -66,7 +67,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Fetch current order state
     const currentOrder = await db.order.findUnique({
       where: { id: orderId },
-      include: { orderItems: true },
+      include: {
+        orderItems: true,
+        address: true,
+        user: {
+          select: { name: true, email: true },
+        },
+      },
     });
 
     if (!currentOrder) {
@@ -145,6 +152,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       return ord;
     });
+
+    // Trigger email notification for status and tracking updates
+    try {
+      const email = (currentOrder.address as any)?.email || currentOrder.user?.email;
+      const name = currentOrder.address?.name || currentOrder.user?.name || "Customer";
+      
+      if (email) {
+        await sendOrderStatusUpdateEmail({
+          orderNumber: updatedOrder.orderNumber,
+          customerName: name,
+          customerEmail: email,
+          status: updatedOrder.status,
+          trackingNo: (updatedOrder as any).trackingNo,
+          trackingUrl: (updatedOrder as any).trackingUrl,
+          items: currentOrder.orderItems.map((item) => ({
+            name: item.name,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image,
+          })),
+        });
+      }
+    } catch (err) {
+      console.error("Order status update email dispatch failed:", err);
+    }
 
     return NextResponse.json({ success: true, order: updatedOrder });
   } catch (error) {

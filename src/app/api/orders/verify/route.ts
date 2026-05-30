@@ -114,8 +114,8 @@ export async function POST(req: NextRequest) {
 
       await sendOrderEmails({
         orderNumber: order.orderNumber,
-        customerName: order.user?.name || "Customer",
-        customerEmail: order.user?.email || "",
+        customerName: order.address?.name || order.user?.name || "Customer",
+        customerEmail: (order.address as any)?.email || order.user?.email || "",
         totalAmount: order.totalAmount,
         paymentMethod: "RAZORPAY",
         shippingAddress: order.address,

@@ -1,29 +1,33 @@
 import nodemailer from "nodemailer";
 import { formatDate } from "./utils";
 
-const gmailUser = process.env.GMAIL_USER || "";
-const gmailPass = process.env.GMAIL_PASS || "";
+// Get nodemailer transporter dynamically at runtime (crucial for Next.js/Vercel environment variables)
+function getTransporter() {
+  const gmailUser = process.env.GMAIL_USER || "";
+  const gmailPass = process.env.GMAIL_PASS || "";
 
-// Create nodemailer transporter with robust connection and SSL/TLS settings
-const transporter =
-  gmailUser && gmailPass && gmailUser !== "your-gmail-address@gmail.com"
-    ? nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        family: 4,
-        auth: {
-          user: gmailUser,
-          pass: gmailPass,
-        },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
-        tls: {
-          rejectUnauthorized: false,
-        },
-      } as any)
-    : null;
+  if (!gmailUser || !gmailPass || gmailUser === "your-gmail-address@gmail.com") {
+    return { transporter: null, gmailUser: "" };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // Port 587 uses STARTTLS (secure: false)
+    auth: {
+      user: gmailUser,
+      pass: gmailPass,
+    },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
+    tls: {
+      rejectUnauthorized: false,
+    },
+  } as any);
+
+  return { transporter, gmailUser };
+}
 
 interface EmailOrderItem {
   name: string;
@@ -56,6 +60,7 @@ interface OrderEmailData {
  * Sends order confirmation emails to the customer and notifications to the store administrator.
  */
 export async function sendOrderEmails(orderData: OrderEmailData) {
+  const { transporter, gmailUser } = getTransporter();
   const {
     orderNumber,
     customerName,
@@ -271,6 +276,7 @@ export async function sendOrderEmails(orderData: OrderEmailData) {
  * Sends a password reset email to a customer with a secure JWT link.
  */
 export async function sendPasswordResetEmail(email: string, name: string, resetLink: string) {
+  const { transporter, gmailUser } = getTransporter();
   if (!transporter) {
     console.log("================= SMTP NOT CONFIGURED =================\n");
     console.log(`[PASSWORD RESET LOG] Sent to: ${email}`);
@@ -356,6 +362,7 @@ interface OrderUpdateEmailData {
  * Sends an email notification to the customer when their order status or tracking details are updated.
  */
 export async function sendOrderStatusUpdateEmail(data: OrderUpdateEmailData) {
+  const { transporter, gmailUser } = getTransporter();
   const { orderNumber, customerName, customerEmail, status, trackingNo, trackingUrl, items } = data;
 
   const subject = `Order Update: ${orderNumber} - Status changed to ${status} - KK Brand`;
@@ -379,11 +386,10 @@ export async function sendOrderStatusUpdateEmail(data: OrderUpdateEmailData) {
       <div style="background-color: #fdfbf7; border: 1px solid #f5ebdb; border-radius: 6px; padding: 18px; margin: 24px 0; text-align: center;">
         <p style="color: #765337; margin: 0 0 6px 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Shipment Tracking Details</p>
         <p style="color: #111827; margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">Tracking Number: <span style="font-weight: 800; font-family: monospace;">${trackingNo}</span></p>
-        ${
-          trackingUrl
-            ? `<a href="${trackingUrl}" target="_blank" style="background-color: #111827; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: 700; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Track Shipment</a>`
-            : ""
-        }
+        ${trackingUrl
+        ? `<a href="${trackingUrl}" target="_blank" style="background-color: #111827; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: 700; display: inline-block; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Track Shipment</a>`
+        : ""
+      }
       </div>
     `;
   }

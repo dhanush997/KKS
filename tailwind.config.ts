@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindAnimate from "tailwindcss-animate";
 
 const config: Config = {
   content: [
@@ -43,17 +44,17 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         gold: {
-          50: "#fdfbf7",
-          100: "#fbf7ee",
-          200: "#f5ebdb",
-          300: "#ebd8bd",
-          400: "#d9bc94",
-          500: "#c49e6d",
-          600: "#b28555",
-          700: "#946a43",
-          800: "#765337",
-          900: "#60432e",
-          950: "#372518",
+          50: "#fff5f5",
+          100: "#ffe3e3",
+          200: "#ffc9c9",
+          300: "#ffa8a8",
+          400: "#ff8787",
+          500: "#ff6b6b",
+          600: "#e5001c",
+          700: "#c90014",
+          800: "#ab000f",
+          900: "#8c000b",
+          950: "#5a0006",
         },
       },
       borderRadius: {
@@ -82,6 +83,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindAnimate],
 };
 export default config;

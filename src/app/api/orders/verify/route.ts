@@ -102,6 +102,9 @@ export async function POST(req: NextRequest) {
       return ord;
     });
 
+    // Skip auto-triggering forward shipment registration here; it is now triggered on admin status transition to SHIPPED.
+    const finalOrder = updatedOrder;
+
     // 4. Trigger email notifications
     try {
       const emailItems = order.orderItems.map((item: any) => ({
@@ -115,7 +118,8 @@ export async function POST(req: NextRequest) {
       }));
 
       await sendOrderEmails({
-        orderNumber: order.orderNumber,
+        orderId: finalOrder.id,
+        orderNumber: finalOrder.orderNumber,
         customerName: order.address?.name || order.user?.name || "Customer",
         customerEmail: (order.address as any)?.email || order.user?.email || "",
         totalAmount: order.totalAmount,
@@ -128,7 +132,7 @@ export async function POST(req: NextRequest) {
       console.error("Payment verified but order confirmation email dispatch failed:", err);
     }
 
-    return NextResponse.json({ success: true, order: updatedOrder });
+    return NextResponse.json({ success: true, order: finalOrder });
   } catch (error: any) {
     console.error("Razorpay verification API error:", error);
     return NextResponse.json({ error: error.message || "Failed to verify transaction signature." }, { status: 500 });

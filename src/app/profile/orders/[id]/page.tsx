@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatPrice } from "@/lib/utils";
-import { ArrowLeft, Loader2, Calendar, MapPin, CreditCard, ShoppingBag, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, MapPin, CreditCard, ShoppingBag, AlertTriangle, Printer, Mail, Check } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -61,6 +61,38 @@ export default function OrderDetailsPage({ params }: PageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
+  const [isEmailing, setIsEmailing] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+
+  const handleEmailInvoice = async () => {
+    if (!order) return;
+    setIsEmailing(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/invoice/email`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setIsEmailSent(true);
+        toast({
+          title: "Invoice Emailed",
+          description: "A tax invoice copy has been sent to your email address.",
+          variant: "success",
+        });
+      } else {
+        throw new Error("Failed to send email");
+      }
+    } catch (err) {
+      console.error("Error sending invoice email:", err);
+      toast({
+        title: "Dispatch Failed",
+        description: "Unable to email the invoice at this time.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEmailing(false);
+    }
+  };
 
   // Load Order Details
   useEffect(() => {
@@ -125,6 +157,50 @@ export default function OrderDetailsPage({ params }: PageProps) {
     }
   };
 
+  const handleReturnOrder = async () => {
+    if (!order) return;
+
+    const confirmReturn = window.confirm("Are you sure you want to request a return? This will automatically initiate a carrier pickup at your address.");
+    if (!confirmReturn) return;
+
+    setIsReturning(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/return`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to process return.");
+      }
+
+      toast({
+        title: "Return Initiated",
+        description: "Your return has been requested and pickup scheduled.",
+        variant: "success",
+      });
+
+      // Update local state
+      setOrder((prev) => prev ? { 
+        ...prev, 
+        status: "RETURN_REQUESTED", 
+        trackingNo: data.order.trackingNo, 
+        trackingUrl: data.order.trackingUrl 
+      } : null);
+    } catch (err: any) {
+      console.error("Error returning order:", err);
+      toast({
+        title: "Return Request Failed",
+        description: err.message || "Failed to initiate return.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReturning(false);
+    }
+  };
+
   if (sessionStatus === "loading" || isLoading) {
     return (
       <div className="flex-grow flex items-center justify-center min-h-[50vh]">
@@ -150,6 +226,8 @@ export default function OrderDetailsPage({ params }: PageProps) {
     SHIPPED: "bg-indigo-100 text-indigo-800 border-indigo-200/50",
     DELIVERED: "bg-emerald-100 text-emerald-800 border-emerald-200/50",
     CANCELLED: "bg-rose-100 text-rose-800 border-rose-200/50",
+    RETURN_REQUESTED: "bg-purple-100 text-purple-800 border-purple-200/50",
+    RETURNED: "bg-neutral-100 text-neutral-800 border-neutral-200/50",
   };
 
   // Check if order can be cancelled (only PENDING or PROCESSING)
@@ -181,7 +259,27 @@ export default function OrderDetailsPage({ params }: PageProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+            <button
+              onClick={handleEmailInvoice}
+              disabled={isEmailing}
+              className="inline-flex items-center gap-1.5 border border-neutral-200 hover:border-black px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-black transition-colors rounded-none bg-white disabled:opacity-50"
+            >
+              {isEmailing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isEmailSent ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              {isEmailing ? "Emailing..." : isEmailSent ? "Invoice Emailed" : "Email Invoice"}
+            </button>
+            <Link
+              href={`/profile/orders/${order.id}/invoice`}
+              className="inline-flex items-center gap-1.5 border border-neutral-200 hover:border-black px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:text-black transition-colors rounded-none bg-white"
+            >
+              <Printer className="h-4 w-4" /> Print Invoice
+            </Link>
+            <span className={`rounded-none border px-3 py-1 text-xs font-bold uppercase tracking-wider ${
               statusColors[order.status] || "bg-neutral-100 text-neutral-800"
             }`}>
               {order.status}
@@ -345,6 +443,34 @@ export default function OrderDetailsPage({ params }: PageProps) {
             >
               Cancel Order
             </Button>
+          </div>
+        )}
+
+        {/* Return Order Actions */}
+        {order.status === "DELIVERED" && (
+          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
+              <Calendar className="h-4.5 w-4.5 text-emerald-500" /> Unsatisfied with your garment? You can request a doorstep return and pickup.
+            </p>
+            <Button
+              onClick={handleReturnOrder}
+              isLoading={isReturning}
+              variant="outline"
+              className="w-full sm:w-auto uppercase font-bold tracking-wider text-xs h-10 px-6 border-red-600 text-red-600 hover:bg-red-50"
+            >
+              Request Return
+            </Button>
+          </div>
+        )}
+
+        {order.status === "RETURN_REQUESTED" && (
+          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
+              <Calendar className="h-4.5 w-4.5 text-indigo-500" /> Return pickup is scheduled at your address. Track using the link above.
+            </p>
+            <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
+              Return In Progress
+            </span>
           </div>
         )}
 

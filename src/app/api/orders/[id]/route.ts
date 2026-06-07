@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendOrderStatusUpdateEmail } from "@/lib/email";
+import { createForwardShipment } from "@/lib/shiprocket";
 
 // Helper to check admin session
 async function checkAdminSession() {
@@ -153,6 +154,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return ord;
     });
 
+    // Trigger Shiprocket Carrier Order Creation when status is updated to SHIPPED
+    let finalOrder = updatedOrder;
+    if (status === "SHIPPED" && currentOrder.status !== "SHIPPED") {
+      try {
+        const shipment = await createForwardShipment(updatedOrder, currentOrder.address, currentOrder.orderItems);
+        if (shipment && shipment.trackingNo) {
+          finalOrder = await db.order.update({
+            where: { id: orderId },
+            data: {
+              trackingNo: shipment.trackingNo,
+              trackingUrl: shipment.trackingUrl,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to register order on Shiprocket:", err);
+      }
+    }
+
     // Trigger email notification for status and tracking updates
     try {
       const email = (currentOrder.address as any)?.email || currentOrder.user?.email;
@@ -160,12 +180,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       
       if (email) {
         await sendOrderStatusUpdateEmail({
-          orderNumber: updatedOrder.orderNumber,
+          orderId: finalOrder.id,
+          orderNumber: finalOrder.orderNumber,
           customerName: name,
           customerEmail: email,
-          status: updatedOrder.status,
-          trackingNo: (updatedOrder as any).trackingNo,
-          trackingUrl: (updatedOrder as any).trackingUrl,
+          status: finalOrder.status,
+          trackingNo: (finalOrder as any).trackingNo,
+          trackingUrl: (finalOrder as any).trackingUrl,
           items: currentOrder.orderItems.map((item: any) => ({
             name: item.name,
             size: item.size,
@@ -181,7 +202,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       console.error("Order status update email dispatch failed:", err);
     }
 
-    return NextResponse.json({ success: true, order: updatedOrder });
+    return NextResponse.json({ success: true, order: finalOrder });
   } catch (error) {
     console.error("Order PUT status update error:", error);
     return NextResponse.json({ error: "Failed to update order status." }, { status: 500 });

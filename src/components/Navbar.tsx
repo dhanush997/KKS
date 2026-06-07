@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -14,11 +15,15 @@ export function Navbar() {
   const { cartCount } = useCart();
   const { wishlist } = useWishlist();
   const router = useRouter();
-  
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState<string | null>(null);
+  
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const isAdmin = session?.user?.role === "ADMIN";
   const wishlistCount = wishlist.length;
@@ -88,19 +93,33 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-100 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         
-        {/* Mobile menu trigger & Desktop Navigation (Left Column) */}
-        <div className="flex flex-1 items-center">
+        {/* Left Side: Logo & Desktop Navigation */}
+        <div className="flex items-center gap-6 lg:gap-10">
+          {/* Mobile menu trigger */}
           <button
             onClick={() => setIsOpen(true)}
-            className="rounded-none p-2 text-neutral-500 hover:bg-neutral-50 hover:text-black md:hidden"
+            className="rounded-none p-2 text-neutral-500 hover:bg-neutral-50 hover:text-black md:hidden shrink-0"
           >
             <Menu className="h-6 w-6" />
             <span className="sr-only">Open menu</span>
           </button>
           
-          <nav className="hidden md:flex flex-row flex-nowrap items-center space-x-4 lg:space-x-6 text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-600 whitespace-nowrap">
+          {/* Brand Logo (Left Corner) */}
+          <Link href="/" className="flex items-center group/logo shrink-0">
+            <Image
+              src="/kk_brand_logo.png"
+              alt="KK BRAND Logo"
+              width={200}
+              height={60}
+              className="h-12 sm:h-14 w-auto object-contain transition-transform duration-300 group-hover/logo:scale-102"
+              priority
+            />
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex flex-row flex-nowrap items-center space-x-4 lg:space-x-6 text-[11px] font-black uppercase tracking-[0.2em] text-neutral-600 whitespace-nowrap">
             <div className="py-4">
               <Link href="/" className="hover:text-black transition-colors duration-200 hover:underline underline-offset-4">
                 Home
@@ -146,36 +165,13 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Brand Logo (Center Column) */}
-        <div className="flex flex-none justify-center">
-          <Link href="/" className="flex items-center gap-2.5 group/logo">
-            {/* Symmetrical Geometric Monogram Logo */}
-            <svg 
-              className="h-7 w-7 text-black transform group-hover/logo:scale-105 transition-transform duration-300" 
-              viewBox="0 0 120 120" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="9.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M 42 32 L 42 88"/>
-              <path d="M 42 60 L 60 35 M 42 60 L 60 85"/>
-              <path d="M 78 32 L 78 88"/>
-              <path d="M 78 60 L 60 35 M 78 60 L 60 85"/>
-            </svg>
-            <span className="text-base font-black uppercase tracking-[0.25em] text-black">
-              KK BRAND
-            </span>
-          </Link>
-        </div>
-
         {/* Actions (Right Column) */}
-        <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-3">
+        <div className="flex items-center justify-end space-x-1 sm:space-x-3 shrink-0">
           
           {/* Search box (desktop) */}
           <form onSubmit={handleSearchSubmit} className="relative hidden lg:block">
             <input
+              suppressHydrationWarning
               type="text"
               placeholder="Search..."
               value={searchQuery}
@@ -189,7 +185,7 @@ export function Navbar() {
           <Link href="/profile?tab=wishlist" className="relative p-2 text-neutral-600 hover:text-black transition-colors" title="Wishlist">
             <Heart className="h-5 w-5" />
             {wishlistCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-none bg-black text-[9px] font-bold text-white">
+              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-none bg-[#e5001c] text-[9px] font-bold text-white">
                 {wishlistCount}
               </span>
             )}
@@ -199,7 +195,7 @@ export function Navbar() {
           <Link href="/cart" className="relative p-2 text-neutral-600 hover:text-black transition-colors" title="Cart">
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-none bg-black text-[9px] font-bold text-white">
+              <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-none bg-[#e5001c] text-[9px] font-bold text-white">
                 {cartCount}
               </span>
             )}
@@ -295,24 +291,14 @@ export function Navbar() {
               className="fixed inset-y-0 left-0 z-50 w-full max-w-xs bg-white p-6 shadow-2xl flex flex-col md:hidden border-r border-neutral-100 overflow-y-auto"
             >
               <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-                <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
-                  <svg 
-                    className="h-5 w-5 text-black" 
-                    viewBox="0 0 120 120" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="10" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <path d="M 42 32 L 42 88"/>
-                    <path d="M 42 60 L 60 35 M 42 60 L 60 85"/>
-                    <path d="M 78 32 L 78 88"/>
-                    <path d="M 78 60 L 60 35 M 78 60 L 60 85"/>
-                  </svg>
-                  <span className="text-sm font-black uppercase tracking-[0.2em] text-black">
-                    KK BRAND
-                  </span>
+                <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center">
+                  <Image
+                    src="/kk_brand_logo.png"
+                    alt="KK BRAND Logo"
+                    width={130}
+                    height={40}
+                    className="h-8 w-auto object-contain"
+                  />
                 </Link>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -326,6 +312,7 @@ export function Navbar() {
               {/* Mobile Search */}
               <form onSubmit={handleSearchSubmit} className="relative mt-6">
                 <input
+                  suppressHydrationWarning
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}

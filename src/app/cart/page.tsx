@@ -55,6 +55,7 @@ export default function CartPage() {
                   alt={item.name}
                   fill
                   className="object-cover"
+                  unoptimized={item.image.startsWith("data:")}
                 />
               </div>
 
@@ -62,10 +63,10 @@ export default function CartPage() {
               <div className="flex-grow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-foreground hover:text-gold-600 transition-colors">
-                    <Link href={`/products/${item.productId}`}>{item.name}</Link>
+                    <Link href={`/products/${item.productId}`} prefetch={false}>{item.name}</Link>
                   </h3>
                   <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                    Size: {item.size}
+                    Size: {item.size} {item.color && `| Color: ${item.color}`}
                   </p>
                   <p className="text-sm font-extrabold text-foreground mt-1">
                     {formatPrice(item.price)}
@@ -77,14 +78,14 @@ export default function CartPage() {
                   {/* Quantity selector */}
                   <div className="flex items-center rounded-md border border-input h-9 bg-background">
                     <button
-                      onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.productId, item.size, item.quantity - 1, item.color)}
                       className="px-2.5 text-muted-foreground hover:text-foreground h-full font-bold text-sm"
                     >
                       -
                     </button>
                     <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.productId, item.size, item.quantity + 1, item.color)}
                       className="px-2.5 text-muted-foreground hover:text-foreground h-full font-bold text-sm"
                       disabled={item.quantity >= item.stock}
                     >
@@ -94,7 +95,7 @@ export default function CartPage() {
 
                   {/* Remove Button */}
                   <button
-                    onClick={() => removeFromCart(item.productId, item.size)}
+                    onClick={() => removeFromCart(item.productId, item.size, item.color)}
                     className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-neutral-100"
                     title="Remove item"
                   >

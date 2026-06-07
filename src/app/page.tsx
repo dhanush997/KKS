@@ -35,66 +35,69 @@ export default async function HomePage() {
 
   const categories = [
     {
-      name: "Outerwear",
-      slug: "outerwear",
-      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=800",
+      name: "Men Wear",
+      slug: "men",
+      image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800",
     },
     {
-      name: "Knitwear",
-      slug: "knitwear",
-      image: "https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?auto=format&fit=crop&q=80&w=800",
+      name: "Women Wear",
+      slug: "women",
+      image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=800",
     },
     {
-      name: "Shirts & Tees",
-      slug: "t-shirts-shirts",
-      image: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&q=80&w=800",
+      name: "Dresses",
+      slug: "womens-dresses",
+      image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&q=80&w=800",
     },
     {
-      name: "Bottoms & Pants",
-      slug: "bottoms-pants",
-      image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=800",
+      name: "Handbags",
+      slug: "womens-handbags",
+      image: "https://images.unsplash.com/photo-1524498250077-390f9e378db0?auto=format&fit=crop&q=80&w=800",
     },
     {
-      name: "Accessories",
-      slug: "accessories",
-      image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800",
+      name: "Kids Wear",
+      slug: "kids",
+      image: "https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&q=80&w=800",
     },
   ];
 
   return (
-    <div className="flex flex-col w-full pb-16">
+    <div className="flex flex-col w-full pb-16 bg-white">
       
-      {/* 1. HERO BANNER */}
-      <section className="relative h-[85vh] w-full overflow-hidden bg-neutral-900">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=2000"
-            alt="Premium Autumn Winter Collection banner"
-            fill
-            className="object-cover opacity-60"
-            priority
-          />
-        </div>
-        <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center px-4 sm:px-6 lg:px-8 text-white">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-neutral-300">
-            Autumn / Winter Collection 2026
+      {/* 1. PREMIUM HERO SECTION */}
+      <section className="grid grid-cols-1 md:grid-cols-12 w-full min-h-[85vh] bg-[#f9f8f6] text-black border-b border-neutral-100 overflow-hidden">
+        {/* Left Side Content - 5 Columns */}
+        <div className="md:col-span-5 flex flex-col justify-center p-8 sm:p-12 md:p-16 lg:p-20 bg-[#f9f8f6]">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
+            KK Brand Campaign 2026
           </p>
-          <h1 className="mt-4 text-5xl font-black uppercase tracking-tight sm:text-7xl max-w-2xl leading-none">
-            TIMELESS DESIGNS. <br />
-            <span className="font-light text-neutral-200">PREMIUM FABRICS.</span>
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-none text-neutral-900 font-serif">
+            Style Speaks <span className="font-light italic text-gold-600">First</span>
           </h1>
-          <p className="mt-6 text-sm text-neutral-300 max-w-md font-medium leading-relaxed">
-            Discover a curated collection of clothing made with double-faced wool, cashmere blends, and long-staple organic cotton.
+          <p className="mt-6 text-xs text-neutral-500 font-semibold uppercase tracking-wider leading-relaxed max-w-sm">
+            Clean lines, premium quality fabrics, and versatile designs created for those who appreciate subtle luxury and a premium feel.
           </p>
-          <div className="mt-10 flex flex-wrap gap-4">
+          <div className="mt-8">
             <Link
               href="/products"
-              className="inline-flex items-center justify-center rounded-none bg-white px-8 py-3.5 text-xs font-black uppercase tracking-widest text-black border border-white hover:bg-transparent hover:text-white transition-all duration-300 active:scale-[0.98]"
+              className="inline-flex items-center justify-center rounded-none bg-black px-8 py-3.5 text-[10px] font-black uppercase tracking-widest text-white border border-black hover:bg-transparent hover:text-black transition-all duration-300 active:scale-[0.98]"
             >
               EXPLORE COLLECTION
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-2 h-3.5 w-3.5" />
             </Link>
           </div>
+        </div>
+        
+        {/* Right Side Image Banner - 7 Columns */}
+        <div className="md:col-span-7 relative min-h-[40vh] md:h-auto w-full bg-neutral-900">
+          <Image
+            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=2000"
+            alt="Style Speaks First Campaign Model"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:bg-gradient-to-r md:from-black/10 md:via-transparent" />
         </div>
       </section>
 

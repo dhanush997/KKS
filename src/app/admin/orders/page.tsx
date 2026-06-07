@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { formatPrice, formatDateShort } from "@/lib/utils";
-import { Search, Loader2, Eye, MapPin, CreditCard, Calendar } from "lucide-react";
+import { Search, Loader2, Eye, MapPin, CreditCard, Calendar, Download } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 
 interface OrderItem {
@@ -64,6 +64,76 @@ export default function AdminOrdersPage() {
   const [trackingNo, setTrackingNo] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
   const [isTrackingUpdating, setIsTrackingUpdating] = useState(false);
+  const [isInvoiceEmailing, setIsInvoiceEmailing] = useState(false);
+  const [isInvoiceEmailed, setIsInvoiceEmailed] = useState(false);
+
+  const handleEmailInvoiceToCustomer = async () => {
+    if (!selectedOrder) return;
+    setIsInvoiceEmailing(true);
+    setIsInvoiceEmailed(false);
+    try {
+      const res = await fetch(`/api/orders/${selectedOrder.id}/invoice/email`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send email.");
+      }
+      setIsInvoiceEmailed(true);
+      toast({
+        title: "Invoice Sent",
+        description: "Tax invoice has been successfully emailed to the customer.",
+        variant: "success",
+      });
+    } catch (err: any) {
+      console.error("Error emailing invoice:", err);
+      toast({
+        title: "Email Dispatch Failed",
+        description: err.message || "Failed to email invoice copy.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInvoiceEmailing(false);
+    }
+  };
+
+  const exportAllOrdersToCSV = () => {
+    if (orders.length === 0) return;
+    const headers = [
+      "Order Number",
+      "Customer Name",
+      "Customer Email",
+      "Date",
+      "Fulfillment Status",
+      "Payment Method",
+      "Payment Status",
+      "Total Amount (INR)",
+      "Shipping Address",
+      "Tracking Number"
+    ];
+    const rows = orders.map((ord) => [
+      ord.orderNumber,
+      ord.user?.name || "Guest",
+      ord.user?.email || "N/A",
+      new Date(ord.createdAt).toLocaleDateString(),
+      ord.status,
+      ord.paymentMethod,
+      ord.paymentStatus,
+      ord.totalAmount,
+      `"${ord.address?.streetAddress || ''}, ${ord.address?.city || ''}, ${ord.address?.state || ''}"`,
+      ord.trackingNo || "N/A"
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `all_store_billing_records_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const loadOrders = (search: string = "") => {
     setIsLoading(true);
@@ -132,6 +202,7 @@ export default function AdminOrdersPage() {
     setSelectedOrder(ord);
     setTrackingNo(ord.trackingNo || "");
     setTrackingUrl(ord.trackingUrl || "");
+    setIsInvoiceEmailed(false);
     setIsDetailsOpen(true);
   };
 
@@ -199,11 +270,23 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-4">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-wider text-foreground">Orders Queue</h1>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold uppercase tracking-wide">
-            Track customer deliveries, update fulfillment status, or cancel bookings.
-          </p>
+        <div className="flex-grow">
+          <div className="flex justify-between items-start gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-black uppercase tracking-wider text-foreground">Orders Queue</h1>
+              <p className="text-xs text-muted-foreground mt-1 font-semibold uppercase tracking-wide">
+                Track customer deliveries, update fulfillment status, or cancel bookings.
+              </p>
+            </div>
+            {orders.length > 0 && (
+              <button
+                onClick={exportAllOrdersToCSV}
+                className="inline-flex items-center gap-1.5 border border-neutral-200 hover:border-black px-3.5 py-2 text-[10px] font-black uppercase tracking-wider text-neutral-600 hover:text-black transition-all bg-white"
+              >
+                <Download className="h-3.5 w-3.5" /> Export Sales Records (CSV)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search */}
@@ -442,7 +525,14 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="pt-4 border-t border-border flex justify-end">
+            <div className="pt-4 border-t border-border flex justify-between items-center">
+              <Button
+                onClick={handleEmailInvoiceToCustomer}
+                isLoading={isInvoiceEmailing}
+                className="uppercase tracking-wider font-bold text-xs h-10 px-6 bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-200"
+              >
+                {isInvoiceEmailed ? "Invoice Sent ✓" : "Email Invoice to Customer"}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setIsDetailsOpen(false)}

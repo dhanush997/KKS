@@ -59,6 +59,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
   const initialSize = sortedInventory[0]?.stock > 0 ? sortedInventory[0].size : product.inventory[0]?.size || "";
   
   const [selectedSize, setSelectedSize] = useState(initialSize);
+  const [selectedColor, setSelectedColor] = useState("Black");
   const [quantity, setQuantity] = useState(1);
   const [dbCoupons, setDbCoupons] = useState<{ code: string; type: string; value: number }[]>([]);
 
@@ -131,6 +132,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
         price: product.price,
         image: product.images.find((img) => img.isFeatured)?.url || product.images[0]?.url,
         size: selectedSize,
+        color: selectedColor,
         stock: currentStock,
       },
       quantity
@@ -138,7 +140,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
 
     toast({
       title: "Added to Cart",
-      description: `${product.name} (Size: ${selectedSize}) has been added to your shopping bag.`,
+      description: `${product.name} (Size: ${selectedSize}, Color: ${selectedColor}) has been added to your shopping bag.`,
       variant: "success",
     });
   };
@@ -175,6 +177,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                     alt={product.name}
                     fill
                     className="object-cover"
+                    unoptimized={img.url.startsWith("data:")}
                   />
                 </button>
               ))}
@@ -189,6 +192,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               fill
               className="object-cover transition-all duration-300"
               priority
+              unoptimized={activeImage.startsWith("data:")}
             />
           </div>
         </div>
@@ -244,11 +248,34 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
 
           {/* Color Indicator Swatches */}
           <div className="mt-5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-black mb-2">Colors</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-black mb-2">
+              Colors: <span className="font-extrabold text-[#e5001c]">{selectedColor}</span>
+            </h3>
             <div className="flex gap-2">
-              <span className="w-5.5 h-5.5 rounded-full border border-neutral-300 bg-neutral-900 cursor-pointer ring-1 ring-offset-2 ring-black" />
-              <span className="w-5.5 h-5.5 rounded-full border border-neutral-300 bg-blue-900 cursor-pointer hover:opacity-85" />
-              <span className="w-5.5 h-5.5 rounded-full border border-neutral-300 bg-stone-300 cursor-pointer hover:opacity-85" />
+              <button
+                type="button"
+                onClick={() => setSelectedColor("Black")}
+                className={`w-6 h-6 rounded-full border border-neutral-300 bg-neutral-900 cursor-pointer transition-all ${
+                  selectedColor === "Black" ? "ring-2 ring-offset-2 ring-[#e5001c]" : "hover:opacity-80"
+                }`}
+                title="Black"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedColor("Navy")}
+                className={`w-6 h-6 rounded-full border border-neutral-300 bg-blue-900 cursor-pointer transition-all ${
+                  selectedColor === "Navy" ? "ring-2 ring-offset-2 ring-[#e5001c]" : "hover:opacity-80"
+                }`}
+                title="Navy"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedColor("Grey")}
+                className={`w-6 h-6 rounded-full border border-neutral-300 bg-stone-300 cursor-pointer transition-all ${
+                  selectedColor === "Grey" ? "ring-2 ring-offset-2 ring-[#e5001c]" : "hover:opacity-80"
+                }`}
+                title="Grey"
+              />
             </div>
           </div>
 

@@ -3,12 +3,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export interface CartItem {
-  id: string; // generated as productId-size
+  id: string; // generated as productId-size-color
   productId: string;
   name: string;
   price: number;
   image: string;
   size: string;
+  color?: string;
   quantity: number;
   stock: number;
 }
@@ -16,8 +17,8 @@ export interface CartItem {
 interface CartContextType {
   cart: CartItem[];
   addToCart: (item: Omit<CartItem, "id" | "quantity">, quantity: number) => void;
-  removeFromCart: (productId: string, size: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number) => void;
+  removeFromCart: (productId: string, size: string, color?: string) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, color?: string) => void;
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
@@ -53,7 +54,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Omit<CartItem, "id" | "quantity">, quantity: number) => {
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex(
-        (item) => item.productId === product.productId && item.size === product.size
+        (item) =>
+          item.productId === product.productId &&
+          item.size === product.size &&
+          item.color === product.color
       );
 
       if (existingItemIndex > -1) {
@@ -68,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           ...prevCart,
           {
             ...product,
-            id: `${product.productId}-${product.size}`,
+            id: `${product.productId}-${product.size}-${product.color || "default"}`,
             quantity: Math.min(quantity, product.stock),
           },
         ];
@@ -76,21 +80,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const removeFromCart = (productId: string, size: string) => {
+  const removeFromCart = (productId: string, size: string, color?: string) => {
     setCart((prevCart) =>
-      prevCart.filter((item) => !(item.productId === productId && item.size === size))
+      prevCart.filter(
+        (item) =>
+          !(item.productId === productId && item.size === size && item.color === color)
+      )
     );
   };
 
-  const updateQuantity = (productId: string, size: string, quantity: number) => {
+  const updateQuantity = (
+    productId: string,
+    size: string,
+    quantity: number,
+    color?: string
+  ) => {
     if (quantity <= 0) {
-      removeFromCart(productId, size);
+      removeFromCart(productId, size, color);
       return;
     }
 
     setCart((prevCart) =>
       prevCart.map((item) => {
-        if (item.productId === productId && item.size === size) {
+        if (item.productId === productId && item.size === size && item.color === color) {
           return {
             ...item,
             quantity: Math.min(quantity, item.stock),

@@ -13,9 +13,15 @@ import {
   Sparkles,
   ArrowLeft,
   Tag,
+  X,
 } from "lucide-react";
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
 
   const links = [
@@ -64,18 +70,34 @@ export function AdminSidebar() {
   ];
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex h-full w-64 flex-col border-r border-border bg-card px-4 py-6 shadow-sm">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-border bg-card px-4 py-6 shadow-sm transition-transform duration-300 ease-in-out md:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
       
       {/* Brand logo */}
-      <div className="mb-8 px-2">
-        <Link href="/" className="flex items-center">
-          <span className="text-lg font-black uppercase tracking-widest text-foreground">
-            KK <span className="text-gold-500 font-light">ADMIN</span>
-          </span>
-        </Link>
-        <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-          Store Management
-        </p>
+      <div className="mb-8 px-2 flex items-center justify-between">
+        <div className="flex flex-col">
+          <Link href="/" className="flex items-center">
+            <span className="text-lg font-black uppercase tracking-widest text-foreground">
+              KK <span className="text-gold-500 font-light">ADMIN</span>
+            </span>
+          </Link>
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Store Management
+          </p>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-black md:hidden"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Nav links */}

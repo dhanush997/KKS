@@ -9,7 +9,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { formatDateShort, formatPrice } from "@/lib/utils";
-import { ShoppingBag, MapPin, User, ChevronRight, Loader2, Package, Calendar, Heart } from "lucide-react";
+import { ShoppingBag, MapPin, User, ChevronRight, Loader2, Package, Calendar, Heart, Download } from "lucide-react";
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
@@ -22,6 +22,29 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const exportBillingCSV = () => {
+    if (orders.length === 0) return;
+    const headers = ["Order Number", "Date", "Status", "Payment Method", "Payment Status", "Total Amount (INR)"];
+    const rows = orders.map((ord) => [
+      ord.orderNumber,
+      new Date(ord.createdAt).toLocaleDateString(),
+      ord.status,
+      ord.paymentMethod,
+      ord.paymentStatus,
+      ord.totalAmount,
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `billing_records_${session?.user?.email}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Read search params to set default tab (e.g. from header wishlist link)
   useEffect(() => {
@@ -176,9 +199,19 @@ export default function ProfilePage() {
               {/* ORDERS TAB VIEW */}
               {activeTab === "orders" && (
                 <div className="flex-grow flex flex-col">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground border-b border-neutral-100 pb-3 mb-6">
-                    Purchase History
-                  </h2>
+                  <div className="flex justify-between items-center border-b border-neutral-100 pb-3 mb-6">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
+                      Purchase History
+                    </h2>
+                    {orders.length > 0 && (
+                      <button
+                        onClick={exportBillingCSV}
+                        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-neutral-500 hover:text-black transition-colors"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Export Billing Records (CSV)
+                      </button>
+                    )}
+                  </div>
                   
                   {orders.length === 0 ? (
                     <div className="flex-grow flex flex-col items-center justify-center text-center py-12">
@@ -265,7 +298,7 @@ export default function ProfilePage() {
 
                         return (
                           <div key={prod.id} className="group border border-neutral-100 flex flex-col bg-white">
-                            <Link href={`/products/${prod.id}`} className="aspect-[3/4] relative w-full overflow-hidden bg-neutral-50 block">
+                            <Link href={`/products/${prod.id}`} prefetch={false} className="aspect-[3/4] relative w-full overflow-hidden bg-neutral-50 block">
                               <img
                                 src={featuredImg}
                                 alt={prod.name}
@@ -276,7 +309,7 @@ export default function ProfilePage() {
                             <div className="p-4 flex-grow flex flex-col justify-between">
                               <div className="space-y-1">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 line-clamp-1">
-                                  <Link href={`/products/${prod.id}`}>{prod.name}</Link>
+                                  <Link href={`/products/${prod.id}`} prefetch={false}>{prod.name}</Link>
                                 </h3>
                                 <div className="flex items-baseline gap-2">
                                   <span className="text-xs font-extrabold text-black">

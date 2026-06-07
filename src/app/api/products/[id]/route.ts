@@ -94,13 +94,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Process images
     let imageUrls: string[] = [];
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const isCloudinaryConfigured = cloudName && apiKey && apiSecret && cloudName !== "your_cloudinary_cloud_name";
+
     if (images && images.length > 0) {
       for (const img of images) {
-        if (img.startsWith("http")) {
-          // Already uploaded URL
+        if (img.startsWith("http") || img.startsWith("/uploads/")) {
+          // Already uploaded remote URL or local uploads path
+          imageUrls.push(img);
+        } else if (img.startsWith("data:image/") && !isCloudinaryConfigured) {
+          // Base64 image saved directly in DB (when Cloudinary is not configured)
           imageUrls.push(img);
         } else {
-          // Base64 file string, needs upload
+          // Base64 file string, needs Cloudinary upload
           const url = await uploadToCloudinary(img, "products");
           imageUrls.push(url);
         }

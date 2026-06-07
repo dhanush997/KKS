@@ -4,8 +4,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Facebook, Instagram, Linkedin, Globe, ShieldCheck } from "lucide-react";
 import { Button } from "./ui/button";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -36,6 +38,10 @@ export function Footer() {
     "sunglasses for men", "perfume for men", "polo t-shirts", "oversized t-shirts", 
     "korean trousers", "baggy pants men", "linen pants", "chinos for men"
   ];
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   return (
     <footer className="w-full bg-[#f8f6f2] border-t border-neutral-200/50 text-neutral-800">

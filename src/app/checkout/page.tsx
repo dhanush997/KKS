@@ -179,7 +179,7 @@ function CheckoutForm() {
       });
 
       clearCart();
-      router.push(`/checkout/success?orderNumber=${sandboxOrderData.orderNumber}&edd=${encodeURIComponent(edd.toISOString())}&method=RAZORPAY`);
+      router.push(`/checkout/success?orderNumber=${sandboxOrderData.orderNumber}&orderId=${sandboxOrderData.orderId}&edd=${encodeURIComponent(edd.toISOString())}&method=RAZORPAY`);
     } catch (verifyErr: any) {
       console.error("Verification processing failed:", verifyErr);
       toast({
@@ -256,6 +256,7 @@ function CheckoutForm() {
         body: JSON.stringify({
           cartItems: cart.map((item) => ({
             ...item,
+            name: item.color ? `${item.name} (${item.color})` : item.name,
             couponCode: appliedCoupons[item.id] || null,
           })),
           paymentMethod,
@@ -278,7 +279,7 @@ function CheckoutForm() {
           variant: "success",
         });
         clearCart();
-        router.push(`/checkout/success?orderNumber=${orderData.order.orderNumber}&edd=${encodeURIComponent(orderData.order.estimatedDeliveryDate)}&method=COD`);
+        router.push(`/checkout/success?orderNumber=${orderData.order.orderNumber}&orderId=${orderData.order.id}&edd=${encodeURIComponent(orderData.order.estimatedDeliveryDate)}&method=COD`);
         return;
       }
 
@@ -332,7 +333,7 @@ function CheckoutForm() {
             });
 
             clearCart();
-            router.push(`/checkout/success?orderNumber=${orderData.orderNumber}&edd=${encodeURIComponent(edd.toISOString())}&method=RAZORPAY`);
+            router.push(`/checkout/success?orderNumber=${orderData.orderNumber}&orderId=${orderData.orderId}&edd=${encodeURIComponent(edd.toISOString())}&method=RAZORPAY`);
           } catch (verifyErr: any) {
             console.error("Verification processing failed:", verifyErr);
             toast({

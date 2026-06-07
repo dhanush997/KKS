@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Clock, Tag, X, Copy, Check } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface BannerData {
   id: string;
@@ -16,6 +17,7 @@ interface BannerData {
 }
 
 export function PromoBanner() {
+  const pathname = usePathname();
   const [banner, setBanner] = useState<BannerData | null>(null);
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -73,7 +75,7 @@ export function PromoBanner() {
     sessionStorage.setItem("promo-banner-dismissed", "true");
   };
 
-  if (isDismissed || !banner) return null;
+  if (pathname?.startsWith("/admin") || isDismissed || !banner) return null;
 
   return (
     <div className={`relative w-full bg-gradient-to-r ${banner.bgGradient} ${banner.textColor} px-4 py-2 text-center text-xs font-semibold tracking-wide shadow-sm flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-6 min-h-[38px] transition-all`}>

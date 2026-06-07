@@ -297,6 +297,7 @@ export async function POST(req: NextRequest) {
       // Trigger email notifications
       try {
         await sendOrderEmails({
+          orderId: order.id,
           orderNumber: order.orderNumber,
           customerName: customerName,
           customerEmail: customerEmail,

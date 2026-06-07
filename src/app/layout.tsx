@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "Shop the latest trends in fashion, homeware, and kids clothes at KK Brand. Experience premium fabrics, timeless designs, and fast shipping.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   icons: {
-    icon: "/icon.svg",
+    icon: "/kk_brand_logo.png",
   },
 };
 

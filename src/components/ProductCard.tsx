@@ -82,12 +82,13 @@ export function ProductCard({ product }: ProductCardProps) {
           }}
           className="absolute right-2.5 top-2.5 z-10 p-1.5 bg-white/95 rounded-none border border-neutral-100 text-neutral-600 hover:text-black transition-colors"
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          suppressHydrationWarning
         >
           <Heart className={`h-3.5 w-3.5 ${isWishlisted ? "fill-black text-black" : "text-neutral-500"}`} />
         </button>
 
         {/* Dynamic Image Hover transition */}
-        <Link href={`/products/${product.id}`} className="relative h-full w-full block">
+        <Link href={`/products/${product.id}`} prefetch={false} className="relative h-full w-full block">
           <Image
             src={featuredImage}
             alt={product.name}
@@ -95,6 +96,7 @@ export function ProductCard({ product }: ProductCardProps) {
             sizes="(max-width: 768px) 50vw, 33vw"
             className="object-cover transition-all duration-550 group-hover:scale-105"
             priority={false}
+            unoptimized={featuredImage.startsWith("data:")}
           />
           {hoverImage && hoverImage !== featuredImage && (
             <motion.div
@@ -108,6 +110,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 fill
                 sizes="(max-width: 768px) 50vw, 33vw"
                 className="object-cover scale-105 group-hover:scale-100 transition-transform duration-550"
+                unoptimized={hoverImage.startsWith("data:")}
               />
             </motion.div>
           )}
@@ -117,16 +120,22 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Product Details Area */}
       <div className="flex flex-col pt-3 bg-transparent pb-1">
         <h3 className="text-xs font-semibold text-neutral-800 group-hover:text-black transition-colors line-clamp-1 uppercase tracking-wider">
-          <Link href={`/products/${product.id}`}>{product.name}</Link>
+          <Link href={`/products/${product.id}`} prefetch={false}>{product.name}</Link>
         </h3>
         
         <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-xs font-bold text-black">
-            {formatPrice(product.price)}
-          </span>
-          {product.compareAtPrice && product.compareAtPrice > product.price && (
-            <span className="text-[10px] text-neutral-400 line-through font-normal">
-              {formatPrice(product.compareAtPrice)}
+          {discountPercent ? (
+            <>
+              <span className="text-xs font-black text-[#e5001c]">
+                {formatPrice(product.price)}
+              </span>
+              <span className="text-[10px] text-neutral-400 line-through font-normal">
+                {formatPrice(product.compareAtPrice!)}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs font-bold text-black">
+              {formatPrice(product.price)}
             </span>
           )}
         </div>
